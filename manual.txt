@@ -1,0 +1,5 @@
+# to run test case parser and extractor
+python demo_phase.py
+
+# to run the web interface
+python -m streamlit  run web/app.py

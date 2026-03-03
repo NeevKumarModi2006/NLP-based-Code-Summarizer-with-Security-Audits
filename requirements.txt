@@ -1,0 +1,10 @@
+tree-sitter
+tree-sitter-python
+tree-sitter-java
+tree-sitter-c
+tree-sitter-javascript
+transformers
+torch
+streamlit
+semgrep==1.148.0    
+pytest
