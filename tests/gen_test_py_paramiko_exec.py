@@ -1,5 +1,5 @@
 import paramiko
 def run_ssh(cmd):
     client = paramiko.SSHClient()
-    # VULNERABLE: Command Injection
+    # command injection via ssh
     client.exec_command(cmd)

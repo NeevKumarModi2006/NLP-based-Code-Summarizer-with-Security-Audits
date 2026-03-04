@@ -1,4 +1,4 @@
-# Author: Neev Modi
+# author: Neev Modi
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch

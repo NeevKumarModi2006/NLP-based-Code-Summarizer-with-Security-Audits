@@ -13,35 +13,35 @@ class VulnerableApp:
         self.conn = sqlite3.connect(db_name)
 
     def get_user_unsafe(self, username):
-        # VULN: SQL Injection
+        # sql injection
         query = "SELECT * FROM users WHERE username = '" + username + "'"
         cursor = self.conn.cursor()
         cursor.execute(query)
         return cursor.fetchall()
 
     def ping_host(self, host):
-        # VULN: Command Injection
+        # command injection
         os.system("ping -c 1 " + host)
 
     def load_user_data(self, data):
-        # VULN: Pickle Deserialization
+        # unsafe pickle
         return pickle.loads(data)
 
     def load_config(self, config_str):
-        # VULN: YAML Deserialization
+        # unsafe yaml load
         return yaml.load(config_str)
 
     def store_password(self, password):
-        # VULN: Weak Hash
+        # weak hash
         return hashlib.md5(password.encode()).hexdigest()
 
     def run_script(self, script_name):
-        # VULN: Command Injection
+        # command injection via shell
         subprocess.call("./scripts/" + script_name, shell=True)
 
 @app.route('/hello')
 def hello():
-    # VULN: Reflected XSS
+    # reflected xss
     name = request.args.get('name', 'World')
     return "<h1>Hello " + name + "</h1>"
 

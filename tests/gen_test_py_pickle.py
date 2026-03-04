@@ -1,4 +1,4 @@
 import pickle
 def load_data(data):
-    # VULNERABLE: Insecure Deserialization
+    # unsafe deserialization
     return pickle.loads(data)

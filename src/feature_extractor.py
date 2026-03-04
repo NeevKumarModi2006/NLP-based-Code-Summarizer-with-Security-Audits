@@ -1,4 +1,4 @@
-# Author: Neev Modi
+# author: Neev Modi
 
 from tree_sitter import Node
 from src.ast_parser import ASTParser

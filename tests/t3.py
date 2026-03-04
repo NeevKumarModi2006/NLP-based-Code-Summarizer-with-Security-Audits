@@ -1,8 +1,7 @@
 import pickle
 
 def load_user_session(data):
-    # MEDIUM/HIGH RISK: pickle.load is dangerous on untrusted data
-    # It can lead to Remote Code Execution (RCE)
+    # unsafe pickle on untrusted data
     return pickle.loads(data)
 
 with open("session.pkl", "rb") as f:

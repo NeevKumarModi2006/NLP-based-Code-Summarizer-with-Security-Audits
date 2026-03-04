@@ -1,4 +1,4 @@
 import subprocess
 def run_cmd(cmd):
-    # VULNERABLE: Command Injection
+    # command injection via shell
     subprocess.call(cmd, shell=True)

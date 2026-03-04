@@ -1,4 +1,4 @@
-# Author: Neev Modi
+# author: Neev Modi
 
 import argparse
 import sys
@@ -44,7 +44,7 @@ def analyze_file(file_path):
 
     print("[*] Generating NLP Summary...")
     enricher = PromptEnricher()
-   # prompt = enricher.construct_prompt(findings, features, code)
+    # prompt = enricher.construct_prompt(findings, features, code)
 
     inference = InferenceEngine()
     summary = inference.generate_summary(prompt)

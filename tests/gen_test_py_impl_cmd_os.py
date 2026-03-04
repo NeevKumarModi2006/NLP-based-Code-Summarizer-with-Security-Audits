@@ -1,4 +1,4 @@
 import os
 def ping(host):
-    # VULNERABLE: Command Injection
+    # command injection
     os.system("ping " + host)
