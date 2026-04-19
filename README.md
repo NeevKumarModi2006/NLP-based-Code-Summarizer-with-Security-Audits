@@ -29,98 +29,21 @@ The tool runs a **5-stage analysis pipeline** on any uploaded source file:
 [Stage 5] AI Summary Generation
       |
       v
-[Security Report + Risk Score]
+[Security Report + Risk Score + Energy Profile]
 ```
 
 ---
 
-## Stage Details
+## Features
 
-### Stage 1 — AST Parsing & Feature Extraction
-
-**Module:** `src/ast_parser.py`, `src/feature_extractor.py`
-
-- The source file is parsed into an **Abstract Syntax Tree (AST)** using [Tree-sitter](https://tree-sitter.github.io/tree-sitter/).
-- Supported languages: Python, Java, JavaScript, C.
-- Tree-sitter S-expression **queries** are run on the AST to extract:
-  - **Function calls** (`@func` captures)
-  - **Branch points** (`@branch` captures) — `if`, `for`, `while`, `switch`, `catch`, boolean operators
-- Extracted calls are matched against predefined **sources** (user input entry points) and **sinks** (dangerous functions).
-- **Cyclomatic Complexity** is computed from total branch count.
-
-**Sources detected (examples):**
-
-| Language | Sources |
+| Feature | Description |
 |---|---|
-| Python | `input`, `sys.argv`, `request.args`, `open` |
-| JavaScript | `prompt`, `req.body`, `process.argv` |
-| Java | `Scanner`, `System.in`, `getParameter` |
-| C | `scanf`, `gets`, `read` |
-
-**Sinks detected (examples):**
-
-| Language | Sinks |
-|---|---|
-| Python | `eval`, `exec`, `os.system`, `pickle.loads`, `subprocess.Popen` |
-| JavaScript | `eval`, `document.write`, `child_process.exec`, `element.innerHTML` |
-| Java | `Runtime.exec`, `ProcessBuilder`, `Statement.execute` |
-| C | `system`, `strcpy`, `sprintf`, `gets`, `popen` |
-
----
-
-### Stage 2 — Security Scanning
-
-**Module:** `src/scanner.py`
-
-- Runs **Semgrep** static analysis rules on the file for known vulnerability patterns.
-- Falls back to AST/Regex-based scanning when Semgrep is unavailable.
-- Returns a list of **findings** with severity (`ERROR`, `WARNING`, `INFO`), message, and line number.
-- Computes a **Risk Score** from 0.0 to 10.0 based on finding severity counts.
-
----
-
-### Stage 3 — Load CodeT5 Model
-
-**Module:** `src/inference.py`
-
-- Loads **Salesforce/codet5-base-multi-sum** from HuggingFace Transformers.
-- Model is cached after first load (`@st.cache_resource`) to avoid repeated loading.
-- Automatically uses GPU (`cuda`) if available, otherwise falls back to CPU.
-
----
-
-### Stage 4 — Prompt Engineering
-
-**Module:** `src/enrichment.py`
-
-- Constructs a structured **prompt** by combining:
-  - The raw source code
-  - Extracted features (sources, sinks, complexity)
-  - Security findings from Stage 2
-- The enriched prompt gives the NLP model full context about the code's security posture.
-
----
-
-### Stage 5 — AI Summary Generation
-
-**Module:** `src/inference.py` → `InferenceEngine.generate_summary()`
-
-- The enriched prompt is tokenized (max 512 tokens) and fed into CodeT5.
-- Uses **beam search** (`num_beams=4`) for higher-quality generation.
-- Decodes the output into a plain-English security summary.
-
----
-
-## Output
-
-After the pipeline completes, the UI displays:
-
-| Section | Description |
-|---|---|
-| **Risk Score Gauge** | Visual 0–10 score with severity label (LOW / MEDIUM / HIGH / CRITICAL) |
-| **AI-Generated Summary** | Plain-English explanation of what the code does and its security implications |
-| **Vulnerability Findings** | Per-finding cards with severity, message, and line number |
-| **AST Feature Extraction** | Detected data sources, dangerous sinks, and cyclomatic complexity |
+| **Single File Audit** | Upload one file, get a full 5-stage security report |
+| **Directory Bulk Scan** | Recursively scan an entire project folder |
+| **Large File Audit** | AST-aware chunking for files over 200 lines with Meta-Transformer summary |
+| **Energy Monitor** | Real-time CPU/Memory/Energy profiling via psutil + Intel RAPL |
+| **React Dashboard** | Interactive CPU & Memory timeseries charts |
+| **130 Custom Rules** | Covering 40 CWE identifiers across 4 languages |
 
 ---
 
@@ -129,21 +52,28 @@ After the pipeline completes, the UI displays:
 ```
 CD/
 |-- main.py                  # CLI entry point for single-file analysis
-|-- demo_phase.py            # Batch demo runner for the tests/ directory
+|-- main_big.py              # AST-aware chunked pipeline for large files
+|-- main_folder.py           # Directory bulk scan orchestrator
+|-- rules.yaml               # 130 Semgrep rules (40 CWEs, 4 languages)
 |-- requirements.txt         # Python dependencies
+|-- cwe_report.txt           # CWE coverage report
 |-- .gitignore
 |-- README.md
 |
 |-- src/
 |   |-- ast_parser.py        # Tree-sitter AST parser (4 languages)
-|   |-- feature_extractor.py # Query-based source/sink/complexity extraction
-|   |-- scanner.py           # Semgrep + fallback security scanner
+|   |-- feature_extractor.py # Source/sink/complexity extraction
+|   |-- scanner.py           # Semgrep + regex fallback scanner
 |   |-- enrichment.py        # Prompt constructor
 |   |-- inference.py         # CodeT5 model wrapper
-|   |-- rules.yaml           # Custom Semgrep rules
 |
 |-- web/
-|   |-- app.py               # Streamlit frontend (main UI)
+|   |-- app.py               # Streamlit frontend (3-tab dashboard)
+|   |-- energy_monitor.py    # Real-time hardware profiler (psutil/RAPL/TDP)
+|   |-- frontend/            # React energy visualization dashboard
+|       |-- src/App.jsx       # Main React component (charts)
+|       |-- package.json
+|       |-- vite.config.js
 |
 |-- tests/                   # Sample vulnerable code files for testing
 |-- outputs/                 # Batch analysis results (gitignored)
@@ -160,30 +90,47 @@ git clone https://github.com/NeevKumarModi2006/NLP-BASED-CODE-SUMMARIZER-WITH-SE
 cd NLP-BASED-CODE-SUMMARIZER-WITH-SECURITY-AUDITS
 ```
 
-### 2. Install dependencies
+### 2. Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run the web UI
+### 3. Install React frontend dependencies
 
 ```bash
-streamlit run web/app.py
+cd web/frontend
+npm install
+cd ../..
 ```
 
-### 4. Run CLI (single file)
+### 4. Run the web UI
+
+```bash
+# Terminal 1: Start React energy dashboard
+cd web/frontend && npm run dev
+
+# Terminal 2: Start Streamlit
+python -m streamlit run web/app.py
+```
+
+### 5. Run CLI (single file)
 
 ```bash
 python main.py --file tests/test1.py
 ```
 
-### 5. Run batch demo
+---
 
-```bash
-python demo_phase.py
-```
-Results are written to `outputs/results.txt`.
+## Rule Coverage
+
+| Language | Rules |
+|---|---|
+| Python | 47 |
+| JavaScript | 35 |
+| C | 24 |
+| Java | 24 |
+| **Total** | **130 rules across 40 CWEs** |
 
 ---
 
@@ -196,6 +143,8 @@ Results are written to `outputs/results.txt`.
 | `tree-sitter-python/java/c/javascript` | Language grammars |
 | `transformers` | HuggingFace CodeT5 model |
 | `torch` | PyTorch backend for inference |
+| `psutil` | CPU/Memory/Energy monitoring |
+| `semgrep` | Static analysis engine |
 
 ---
 

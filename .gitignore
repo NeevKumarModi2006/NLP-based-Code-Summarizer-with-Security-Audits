@@ -44,3 +44,13 @@ Thumbs.db
 
 # Outputs
 outputs/
+
+# Node
+web/frontend/node_modules/
+web/frontend/dist/
+web/frontend/package-lock.json
+
+# Temp / generated
+debug_output*.txt
+*.docx
+~$*

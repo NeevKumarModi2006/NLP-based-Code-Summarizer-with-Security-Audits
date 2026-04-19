@@ -3,3 +3,11 @@ python demo_phase.py
 
 # to run the web interface
 python -m streamlit  run web/app.py
+
+
+python main.py --file "C:\Users\Neev\SomeOtherFolder\mycode.py"
+python main_big.py --file "C:\Users\Neev\SomeOtherFolder\mycode.py"
+
+
+python main_folder.py --dir src/
+python main_folder.py --dir . --output security_report.txt

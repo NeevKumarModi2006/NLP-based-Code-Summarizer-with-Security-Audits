@@ -1,12 +1,10 @@
-# author: Neev Modi
-
 from tree_sitter import Node
 from src.ast_parser import ASTParser
 
 class FeatureExtractor:
     def __init__(self):
         self.parser_interface = ASTParser()
-
+        
         self.queries = {
             'python': """
                 (call function: (identifier) @func)
@@ -59,7 +57,7 @@ class FeatureExtractor:
         }
         self.sinks = {
             'python': {
-                'eval', 'exec', 'os.system', 'subprocess.call', 'pickle.loads', 'subprocess.Popen',
+                'eval', 'exec', 'os.system', 'subprocess.call', 'pickle.loads', 'subprocess.Popen', 
                 'cursor.execute', 'execute', 'subprocess.run', 'os.popen', 'yaml.load', 'tarfile.open'
             },
             'javascript': {
@@ -72,17 +70,15 @@ class FeatureExtractor:
                 'system', 'execl', 'popen', 'strcpy', 'strcat', 'sprintf', 'memcpy', 'gets'
             }
         }
-
+    
     def extract_features(self, tree, code_str: str, language: str):
-        """
-        Extracts features using Tree-sitter Queries.
-        """
+        """this will extract sources, sinks, and complexity using tree-sitter queries."""
         features = {
             'sources': [],
             'sinks': [],
             'complexity': 0
         }
-
+        
         lang_obj = self.parser_interface.get_language(language)
         if not lang_obj or language not in self.queries:
             return features
@@ -93,9 +89,9 @@ class FeatureExtractor:
             query = Query(lang_obj, self.queries[language])
             cursor = QueryCursor(query)
             captures = cursor.captures(tree.root_node)
-
+            
             code_bytes = code_str.encode('utf-8')
-
+            
             for capture_name, nodes in captures.items():
                 for node in nodes:
                     if capture_name == 'branch':
@@ -103,16 +99,14 @@ class FeatureExtractor:
                     elif capture_name == 'func':
                         func_name_bytes = code_bytes[node.start_byte:node.end_byte]
                         func_name = func_name_bytes.decode('utf-8', errors='ignore')
-
+                        
                         if func_name in self.sources.get(language, set()):
                             features['sources'].append(func_name)
-
+                        
                         if func_name in self.sinks.get(language, set()):
                             features['sinks'].append(func_name)
-                        else:
-                            pass
-
+                        
         except Exception as e:
             print(f"Feature extraction error: {e}")
-
+            
         return features

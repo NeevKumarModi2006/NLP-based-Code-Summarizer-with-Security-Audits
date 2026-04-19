@@ -1,4 +1,3 @@
-# author: Neev Modi
 
 import os
 from tree_sitter import Language, Parser

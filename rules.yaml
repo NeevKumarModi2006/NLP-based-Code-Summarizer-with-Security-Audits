@@ -1,0 +1,1360 @@
+rules:
+
+  # ============================================================
+  # PYTHON RULES
+  # ============================================================
+
+  # --- Injection ---
+
+  - id: python-sqli-string-concat
+    patterns:
+      - pattern: $DB.execute($QUERY + ...)
+      - pattern-not: $DB.execute("..." + "...")
+    message: "[CWE-89] SQL Injection via string concatenation in execute(). Use parameterized queries."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+      owasp: A03:2021
+
+  - id: python-sqli-format-string
+    patterns:
+      - pattern: $DB.execute("..." % ...)
+      - pattern: $DB.execute(f"...")
+    message: "[CWE-89] SQL Injection via f-string or %-format in execute(). Use parameterized queries."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+      owasp: A03:2021
+
+  - id: python-sqli-executemany
+    patterns:
+      - pattern: $DB.executemany($QUERY + ...)
+    message: "[CWE-89] SQL Injection risk in executemany() via string concatenation."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  - id: python-nosqli-pymongo
+    pattern: "$COL.find({...: $INPUT, ...})"
+    message: "[CWE-943] Potential NoSQL Injection via unsanitized input in PyMongo query."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-943
+
+  - id: python-command-injection-shell-true
+    pattern: subprocess.Popen(..., shell=True, ...)
+    message: "[CWE-78] Command Injection risk: shell=True with subprocess.Popen(). Avoid shell=True."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+      owasp: A03:2021
+
+  - id: python-command-injection-call
+    pattern: subprocess.call(..., shell=True, ...)
+    message: "[CWE-78] Command Injection risk: shell=True with subprocess.call()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: python-command-injection-run
+    pattern: subprocess.run(..., shell=True, ...)
+    message: "[CWE-78] Command Injection risk: shell=True with subprocess.run()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: python-os-system
+    pattern: os.system($CMD)
+    message: "[CWE-78] Command Injection risk via os.system(). Use subprocess with a list and shell=False."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: python-os-popen
+    pattern: os.popen(...)
+    message: "[CWE-78] Command Injection risk via os.popen(). Use subprocess module instead."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: python-eval-injection
+    pattern: eval($INPUT)
+    message: "[CWE-94] Code Injection via eval(). Never pass user-controlled data to eval()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+      owasp: A03:2021
+
+  - id: python-exec-injection
+    pattern: exec($INPUT)
+    message: "[CWE-94] Code Injection via exec(). Never pass user-controlled data to exec()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: python-compile-injection
+    pattern: compile($INPUT, ...)
+    message: "[CWE-94] Code Injection risk: compile() with dynamic input."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: python-template-injection-jinja2
+    patterns:
+      - pattern: jinja2.Template($INPUT).render(...)
+      - pattern-not: jinja2.Template("...").render(...)
+    message: "[CWE-94] Server-Side Template Injection (SSTI) in Jinja2. Never build templates from user input."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+      owasp: A03:2021
+
+  - id: python-ldap-injection
+    pattern: $CONN.search_s($BASE, ..., $FILTER, ...)
+    message: "[CWE-90] Potential LDAP Injection. Sanitize all filter components."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-90
+
+  - id: python-xpath-injection
+    pattern: $TREE.xpath($EXPR)
+    message: "[CWE-643] Potential XPath Injection. Use parameterized XPath queries."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-643
+
+  # --- Deserialization ---
+
+  - id: python-pickle-loads
+    pattern: pickle.loads(...)
+    message: "[CWE-502] Unsafe deserialization: pickle.loads() can execute arbitrary code."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+      owasp: A08:2021
+
+  - id: python-pickle-load
+    pattern: pickle.load(...)
+    message: "[CWE-502] Unsafe deserialization: pickle.load() can execute arbitrary code."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  - id: python-cpickle
+    pattern: cPickle.loads(...)
+    message: "[CWE-502] Unsafe deserialization via cPickle.loads()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  - id: python-yaml-load-unsafe
+    pattern: yaml.load($DATA)
+    message: "[CWE-502] Unsafe YAML deserialization. Use yaml.safe_load() instead."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+      owasp: A08:2021
+
+  - id: python-marshal-loads
+    pattern: marshal.loads(...)
+    message: "[CWE-502] Unsafe deserialization: marshal.loads() on untrusted data."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  - id: python-shelve-open
+    pattern: shelve.open(...)
+    message: "[CWE-502] shelve uses pickle internally. Ensure the shelf file is not user-supplied."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  - id: python-jsonpickle
+    pattern: jsonpickle.decode(...)
+    message: "[CWE-502] Unsafe deserialization via jsonpickle.decode(). Only decode trusted data."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  # --- Cryptography ---
+
+  - id: python-weak-hash-md5
+    pattern: hashlib.md5(...)
+    message: "[CWE-327] Weak hash algorithm MD5 detected. Use hashlib.sha256() or stronger."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+      owasp: A02:2021
+
+  - id: python-weak-hash-sha1
+    pattern: hashlib.sha1(...)
+    message: "[CWE-327] Weak hash algorithm SHA-1 detected. Use SHA-256 or stronger."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: python-weak-cipher-des
+    pattern: Cipher.DES.new(...)
+    message: "[CWE-327] Weak cipher DES detected. Use AES-256-GCM."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: python-weak-cipher-rc4
+    pattern: ARC4.new(...)
+    message: "[CWE-327] RC4 cipher is broken and must not be used."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: python-ssl-no-verify
+    pattern: ssl._create_unverified_context(...)
+    message: "[CWE-295] SSL certificate verification disabled. This allows MITM attacks."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-295
+      owasp: A02:2021
+
+  - id: python-requests-ssl-verify-false
+    pattern: requests.$METHOD(..., verify=False, ...)
+    message: "[CWE-295] SSL verification disabled in requests. Set verify=True."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-295
+
+  - id: python-hardcoded-password
+    patterns:
+      - pattern: password = "..."
+      - pattern-not: password = ""
+    message: "[CWE-259] Hardcoded password detected. Use environment variables or a secrets manager."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-259
+      owasp: A02:2021
+
+  - id: python-hardcoded-secret-key
+    patterns:
+      - pattern: SECRET_KEY = "..."
+      - pattern-not: SECRET_KEY = ""
+    message: "[CWE-321] Hardcoded secret key detected. Rotate immediately and use env vars."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-321
+
+  - id: python-hardcoded-aws-key
+    pattern-regex: 'AKIA[0-9A-Z]{16}'
+    message: "[CWE-798] Hardcoded AWS Access Key ID detected. Revoke and rotate immediately."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-798
+      owasp: A02:2021
+
+  - id: python-random-not-secure
+    pattern: random.random()
+    message: "[CWE-338] Non-cryptographic PRNG used. Use secrets.token_bytes() for security-sensitive values."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-338
+
+  - id: python-random-randint-not-secure
+    pattern: random.randint(...)
+    message: "[CWE-338] Non-cryptographic PRNG (random.randint). Use secrets.randbelow() for tokens."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-338
+
+  # --- Path Traversal ---
+
+  - id: python-path-traversal-open
+    patterns:
+      - pattern: open($PATH, ...)
+      - pattern-not: open("...", ...)
+    message: "[CWE-22] Potential Path Traversal in open(). Validate and sanitize file paths."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+      owasp: A01:2021
+
+  - id: python-path-traversal-send-file
+    pattern: send_file($PATH, ...)
+    message: "[CWE-22] Potential Path Traversal in Flask send_file(). Use safe_join()."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  - id: python-path-traversal-os-path-join
+    patterns:
+      - pattern: os.path.join($BASE, $INPUT)
+      - pattern-not: os.path.join($BASE, "...")
+    message: "[CWE-22] os.path.join with user-controlled input can escape base directory."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  # --- XXE / XML ---
+
+  - id: python-xxe-etree
+    pattern: xml.etree.ElementTree.parse(...)
+    message: "[CWE-611] XML External Entity (XXE): ElementTree is not safe against XXE by default in older Python."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: xxe
+      cwe: CWE-611
+      owasp: A05:2021
+
+  - id: python-xxe-lxml-nodefend
+    patterns:
+      - pattern: lxml.etree.parse(...)
+      - pattern-not: lxml.etree.parse(..., parser=...)
+    message: "[CWE-611] XXE: lxml.etree.parse without a safe parser. Use XMLParser(resolve_entities=False)."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: xxe
+      cwe: CWE-611
+
+  # --- SSRF ---
+
+  - id: python-ssrf-requests
+    patterns:
+      - pattern: requests.get($URL, ...)
+      - pattern-not: requests.get("...", ...)
+    message: "[CWE-918] Potential SSRF: requests.get() with a dynamic URL. Validate and allowlist URLs."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: ssrf
+      cwe: CWE-918
+      owasp: A10:2021
+
+  - id: python-ssrf-urllib
+    patterns:
+      - pattern: urllib.request.urlopen($URL)
+      - pattern-not: urllib.request.urlopen("...")
+    message: "[CWE-918] Potential SSRF via urllib.request.urlopen(). Validate the URL."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: ssrf
+      cwe: CWE-918
+
+  # --- Logging / Info Disclosure ---
+
+  - id: python-print-sensitive
+    patterns:
+      - pattern: print($VAR)
+      - pattern-not: print("...")
+    message: "[CWE-532] Potential sensitive data written to stdout via print(). Use structured logging."
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: logging
+      cwe: CWE-532
+
+  - id: python-logging-exception
+    pattern: logging.exception(...)
+    message: "[CWE-209] Logging full exception details may expose stack traces. Redact sensitive fields."
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: logging
+      cwe: CWE-209
+
+  # --- Flask / Django Specific ---
+
+  - id: python-flask-debug-true
+    pattern: app.run(..., debug=True, ...)
+    message: "[CWE-94] Flask debug mode enabled. This allows remote code execution. Never use in production."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: misconfiguration
+      cwe: CWE-94
+      owasp: A05:2021
+
+  - id: python-django-raw-sql
+    pattern: $MODEL.objects.raw($QUERY + ...)
+    message: "[CWE-89] SQL Injection via Django raw() with string concatenation. Use parameterized queries."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  - id: python-django-extra-sql
+    pattern: $QUERYSET.extra(where=[$SQL + ...])
+    message: "[CWE-89] SQL Injection via Django extra() with string concatenation."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  - id: python-django-csrf-exempt
+    pattern: |
+      @csrf_exempt
+      def $FUNC(...):
+        ...
+    message: "[CWE-352] CSRF protection disabled via @csrf_exempt. Ensure this endpoint is intentionally unprotected."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: csrf
+      cwe: CWE-352
+      owasp: A01:2021
+
+  - id: python-open-redirect
+    patterns:
+      - pattern: redirect($URL)
+      - pattern-not: redirect("...")
+    message: "[CWE-601] Open Redirect: redirect() with dynamic URL. Validate destination against an allowlist."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: redirect
+      cwe: CWE-601
+      owasp: A01:2021
+
+  # ============================================================
+  # C / C++ RULES
+  # ============================================================
+
+  # --- Buffer Overflows ---
+
+  - id: c-gets-usage
+    pattern: gets(...)
+    message: "[CWE-120] Critical: gets() has no bounds checking and always causes buffer overflow risk. Use fgets()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+      owasp: A03:2021
+
+  - id: c-strcpy-overflow
+    pattern: strcpy(...)
+    message: "[CWE-120] Buffer Overflow risk: strcpy() does not check destination size. Use strncpy() or strlcpy()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-strcat-overflow
+    pattern: strcat(...)
+    message: "[CWE-120] Buffer Overflow risk: strcat() does not check destination size. Use strncat()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-sprintf-overflow
+    pattern: sprintf(...)
+    message: "[CWE-120] Buffer Overflow risk: sprintf() does not check destination size. Use snprintf()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-vsprintf-overflow
+    pattern: vsprintf(...)
+    message: "[CWE-120] Buffer Overflow risk: vsprintf() has no bounds checking. Use vsnprintf()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-scanf-unbounded
+    pattern: scanf("%s", ...)
+    message: "[CWE-120] Unbounded scanf('%s'). Specify a width limit e.g. scanf('%255s') or use fgets()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-memcpy-no-bounds
+    patterns:
+      - pattern: memcpy($DST, $SRC, $SIZE)
+      - pattern-not: memcpy($DST, $SRC, sizeof($DST))
+    message: "[CWE-120] memcpy() with potentially incorrect size argument. Verify bounds explicitly."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-memmove-no-bounds
+    pattern: memmove($DST, $SRC, $SIZE)
+    message: "[CWE-120] memmove() — verify that $SIZE does not exceed destination buffer bounds."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-120
+
+  - id: c-alloca-usage
+    pattern: alloca(...)
+    message: "[CWE-770] alloca() allocates on the stack with no overflow check. Use malloc() instead."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: buffer-overflow
+      cwe: CWE-770
+
+  - id: c-strtok-not-reentrant
+    pattern: strtok(...)
+    message: "[CWE-330] strtok() is not thread-safe. Use strtok_r() in multi-threaded contexts."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: concurrency
+      cwe: CWE-330
+
+  # --- Command Injection ---
+
+  - id: c-system-injection
+    pattern: system(...)
+    message: "[CWE-78] Command Injection via system(). Use execv() family with sanitized argument arrays."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+      owasp: A03:2021
+
+  - id: c-popen-injection
+    pattern: popen(...)
+    message: "[CWE-78] Command Injection risk via popen(). Avoid passing user-controlled strings."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: c-execlp-injection
+    pattern: execlp(...)
+    message: "[CWE-78] Command Injection risk via execlp(). Avoid user-controlled path arguments."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  # --- Format String ---
+
+  - id: c-printf-format-string
+    patterns:
+      - pattern: printf($FMT)
+      - pattern-not: printf("...")
+    message: "[CWE-134] Format String Injection: printf() with a non-literal format string. Use printf('%s', str)."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-134
+
+  - id: c-fprintf-format-string
+    patterns:
+      - pattern: fprintf($FD, $FMT)
+      - pattern-not: fprintf($FD, "...")
+    message: "[CWE-134] Format String Injection: fprintf() with a non-literal format string."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-134
+
+  - id: c-syslog-format-string
+    patterns:
+      - pattern: syslog($PRI, $FMT)
+      - pattern-not: syslog($PRI, "...")
+    message: "[CWE-134] Format String Injection: syslog() with a non-literal format string."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-134
+
+  # --- Memory Management ---
+
+  - id: c-double-free
+    pattern: |
+      free($PTR);
+      ...
+      free($PTR);
+    message: "[CWE-415] Double Free detected. Set pointer to NULL after first free()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: memory
+      cwe: CWE-415
+
+  - id: c-use-after-free
+    pattern: |
+      free($PTR);
+      ...
+      $PTR->$FIELD;
+    message: "[CWE-416] Use-After-Free: pointer dereferenced after free(). Set pointer to NULL after freeing."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: memory
+      cwe: CWE-416
+
+  - id: c-null-deref-no-check
+    patterns:
+      - pattern: |
+          $PTR = malloc(...);
+          $PTR->$FIELD;
+      - pattern-not: |
+          $PTR = malloc(...);
+          if ($PTR == NULL) { ... }
+          $PTR->$FIELD;
+    message: "[CWE-476] NULL Pointer Dereference: malloc() return value not checked before use."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: memory
+      cwe: CWE-476
+
+  - id: c-integer-overflow-malloc
+    pattern: malloc($A * $B)
+    message: "[CWE-190] Integer Overflow in malloc size expression. Use checked arithmetic or calloc()."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: memory
+      cwe: CWE-190
+
+  # --- Cryptography ---
+
+  - id: c-rand-not-secure
+    pattern: rand()
+    message: "[CWE-338] rand() is a non-cryptographic PRNG. Use /dev/urandom or getrandom() for security-sensitive data."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-338
+
+  - id: c-srand-time
+    pattern: srand(time(NULL))
+    message: "[CWE-337] Predictable PRNG seed using time(). Use a cryptographic seed source."
+    languages: [c]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-337
+
+  # --- Race Conditions ---
+
+  - id: c-tmpnam-race
+    pattern: tmpnam(...)
+    message: "[CWE-377] Insecure Temporary File: tmpnam() is vulnerable to TOCTOU race conditions. Use mkstemp()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: race-condition
+      cwe: CWE-377
+
+  - id: c-tempnam-race
+    pattern: tempnam(...)
+    message: "[CWE-377] Insecure Temporary File: tempnam() is vulnerable to TOCTOU. Use mkstemp()."
+    languages: [c]
+    severity: ERROR
+    metadata:
+      category: race-condition
+      cwe: CWE-377
+
+  # ============================================================
+  # JAVA RULES
+  # ============================================================
+
+  # --- SQL Injection ---
+
+  - id: java-sqli-string-concat
+    pattern-regex: 'executeQuery\s*\(\s*".*"\s*\+'
+    message: "[CWE-89] SQL Injection via string concatenation in executeQuery(). Use PreparedStatement."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+      owasp: A03:2021
+
+  - id: java-sqli-execute
+    pattern-regex: 'execute\s*\(\s*".*"\s*\+'
+    message: "[CWE-89] SQL Injection via string concatenation in execute(). Use PreparedStatement."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  - id: java-sqli-createquery
+    pattern-regex: 'createQuery\s*\(\s*".*"\s*\+'
+    message: "[CWE-89] SQL Injection via string concatenation in createQuery(). Use named/positional parameters."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  - id: java-sqli-hibernate-format
+    pattern-regex: 'createQuery\s*\(\s*String\.format\s*\('
+    message: "[CWE-89] SQL Injection via String.format() in Hibernate createQuery()."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+
+  # --- Command Injection ---
+
+  - id: java-command-injection-runtime
+    pattern-regex: 'Runtime\.getRuntime\(\)\.exec\s*\(\s*[^"]\w'
+    message: "[CWE-78] Command Injection via Runtime.exec() with a dynamic argument."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+      owasp: A03:2021
+
+  - id: java-command-injection-processbuilder
+    pattern-regex: 'new\s+ProcessBuilder\s*\(\s*[^"]'
+    message: "[CWE-78] Command Injection risk in ProcessBuilder with dynamic arguments. Validate all inputs."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  # --- XXE ---
+
+  - id: java-xxe-documentbuilderfactory
+    pattern-regex: 'DocumentBuilderFactory\.newInstance\(\)'
+    message: "[CWE-611] XXE: DocumentBuilderFactory without disabling external entities. Set FEATURE_SECURE_PROCESSING."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: xxe
+      cwe: CWE-611
+      owasp: A05:2021
+
+  - id: java-xxe-saxparserfactory
+    pattern-regex: 'SAXParserFactory\.newInstance\(\)'
+    message: "[CWE-611] XXE: SAXParserFactory without disabling external entities."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: xxe
+      cwe: CWE-611
+
+  - id: java-xxe-xmlinputfactory
+    pattern-regex: 'XMLInputFactory\.newInstance\(\)'
+    message: "[CWE-611] XXE: XMLInputFactory without setting IS_SUPPORTING_EXTERNAL_ENTITIES to false."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: xxe
+      cwe: CWE-611
+
+  # --- Deserialization ---
+
+  - id: java-unsafe-deserialization-objectinputstream
+    pattern-regex: 'new\s+ObjectInputStream\s*\('
+    message: "[CWE-502] Unsafe Deserialization via ObjectInputStream. Use a filtering ObjectInputStream or avoid Java serialization."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+      owasp: A08:2021
+
+  - id: java-unsafe-deserialization-xmldecoder
+    pattern-regex: 'new\s+XMLDecoder\s*\('
+    message: "[CWE-502] Critical: XMLDecoder deserializes arbitrary Java objects. Never use with untrusted input."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  - id: java-xstream-deserialization
+    pattern-regex: 'new\s+XStream\s*\(\)'
+    message: "[CWE-502] XStream with default settings can deserialize arbitrary classes. Use XStream security allowlist."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: deserialization
+      cwe: CWE-502
+
+  # --- Cryptography ---
+
+  - id: java-weak-hash-md5
+    pattern-regex: 'MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)'
+    message: "[CWE-327] Weak hash algorithm MD5 detected. Use SHA-256 or stronger."
+    languages: [java]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+      owasp: A02:2021
+
+  - id: java-weak-hash-sha1
+    pattern-regex: 'MessageDigest\.getInstance\s*\(\s*"SHA-1"\s*\)'
+    message: "[CWE-327] Weak hash algorithm SHA-1 detected. Use SHA-256 or stronger."
+    languages: [java]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: java-weak-cipher-des
+    pattern-regex: 'Cipher\.getInstance\s*\(\s*"DES'
+    message: "[CWE-327] Weak cipher DES detected. Use AES/GCM/NoPadding."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: java-weak-cipher-ecb
+    pattern-regex: 'Cipher\.getInstance\s*\(\s*"AES/ECB'
+    message: "[CWE-327] AES/ECB mode is insecure (deterministic). Use AES/GCM/NoPadding."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: java-securerandom-seed
+    pattern-regex: 'new\s+Random\s*\(\s*\d+'
+    message: "[CWE-336] Predictable seed for Random(). Use SecureRandom for security-sensitive operations."
+    languages: [java]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-336
+
+  - id: java-hardcoded-password
+    pattern-regex: '(password|secret|passwd|pwd)\s*=\s*"[^"]+'
+    message: "[CWE-259] Hardcoded password/secret detected. Use environment variables or a secrets manager."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-259
+      owasp: A02:2021
+
+  # --- Path Traversal ---
+
+  - id: java-path-traversal-file
+    pattern-regex: 'new\s+File\s*\([^"]*\+[^"]*\)'
+    message: "[CWE-22] Potential Path Traversal: new File() with string concatenation. Validate and canonicalize paths."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+      owasp: A01:2021
+
+  - id: java-path-traversal-paths-get
+    pattern-regex: 'Paths\.get\s*\([^"]*\+[^"]*\)'
+    message: "[CWE-22] Potential Path Traversal: Paths.get() with string concatenation."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  # --- SSRF ---
+
+  - id: java-ssrf-url-openconnection
+    pattern-regex: 'new\s+URL\s*\([^"]\w.*\)\.openConnection\(\)'
+    message: "[CWE-918] Potential SSRF: URL.openConnection() with dynamic URL. Validate and allowlist URLs."
+    languages: [java]
+    severity: WARNING
+    metadata:
+      category: ssrf
+      cwe: CWE-918
+      owasp: A10:2021
+
+  # --- XSS ---
+
+  - id: java-xss-response-write
+    pattern-regex: 'response\.getWriter\(\)\.write\s*\([^"]\w'
+    message: "[CWE-79] Potential XSS: writing unsanitized user input to HTTP response. Encode output."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: xss
+      cwe: CWE-79
+      owasp: A03:2021
+
+  # --- Logging ---
+
+  - id: java-log4shell-jndi
+    pattern-regex: '\$\{jndi:'
+    message: "[CVE-2021-44228] Log4Shell pattern detected. Ensure Log4j >= 2.17.1 and sanitize logged inputs."
+    languages: [java]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-917
+
+  - id: java-sensitive-data-log
+    pattern-regex: 'log\.(info|debug|warn|error)\s*\(.*[Pp]assword.*\)'
+    message: "[CWE-532] Potential password/sensitive data written to logs."
+    languages: [java]
+    severity: WARNING
+    metadata:
+      category: logging
+      cwe: CWE-532
+
+  # ============================================================
+  # JAVASCRIPT / NODE.JS RULES
+  # ============================================================
+
+  # --- Injection ---
+
+  - id: js-eval-injection
+    pattern: eval($INPUT)
+    message: "[CWE-94] Code Injection: eval() with dynamic input. Never pass user data to eval()."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+      owasp: A03:2021
+
+  - id: js-function-constructor-injection
+    pattern: new Function($INPUT)
+    message: "[CWE-94] Code Injection: new Function() with dynamic input is equivalent to eval()."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: js-settimeout-string
+    patterns:
+      - pattern: setTimeout($CODE, ...)
+      - pattern-not: setTimeout(function() {...}, ...)
+      - pattern-not: setTimeout(() => {...}, ...)
+    message: "[CWE-94] Code Injection: setTimeout() with a string argument evaluates it as code. Use a function."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: js-setinterval-string
+    patterns:
+      - pattern: setInterval($CODE, ...)
+      - pattern-not: setInterval(function() {...}, ...)
+      - pattern-not: setInterval(() => {...}, ...)
+    message: "[CWE-94] Code Injection: setInterval() with a string argument evaluates it as code."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: js-nosqli-mongoose
+    pattern: "$MODEL.find({$FIELD: $INPUT})"
+    message: "[CWE-943] Potential NoSQL Injection in Mongoose find(). Validate query operators in input."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-943
+
+  - id: js-sqli-query-concat
+    patterns:
+      - pattern: $DB.query("..." + $INPUT, ...)
+      - pattern: $DB.query(`...${$INPUT}...`, ...)
+    message: "[CWE-89] SQL Injection via string concatenation in db.query(). Use parameterized queries."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-89
+      owasp: A03:2021
+
+  - id: js-command-injection-exec
+    patterns:
+      - pattern: child_process.exec($CMD, ...)
+      - pattern-not: child_process.exec("...", ...)
+    message: "[CWE-78] Command Injection: child_process.exec() with dynamic input. Use execFile() with argument arrays."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+      owasp: A03:2021
+
+  - id: js-command-injection-execsync
+    patterns:
+      - pattern: child_process.execSync($CMD)
+      - pattern-not: child_process.execSync("...")
+    message: "[CWE-78] Command Injection via child_process.execSync() with dynamic argument."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-78
+
+  - id: js-template-injection-pug
+    pattern: pug.render($TEMPLATE, ...)
+    message: "[CWE-94] SSTI: pug.render() with dynamic template string. Never render user-controlled templates."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: injection
+      cwe: CWE-94
+
+  - id: js-regex-redos
+    pattern-regex: 'new RegExp\s*\([^"]\w'
+    message: "[CWE-1333] ReDoS risk: RegExp built from dynamic input can cause catastrophic backtracking."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: injection
+      cwe: CWE-1333
+
+  # --- XSS ---
+
+  - id: js-innerhtml-xss
+    pattern: $EL.innerHTML = $INPUT
+    message: "[CWE-79] DOM XSS: assigning to innerHTML with unsanitized input. Use textContent or DOMPurify."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: xss
+      cwe: CWE-79
+      owasp: A03:2021
+
+  - id: js-outerhtml-xss
+    pattern: $EL.outerHTML = $INPUT
+    message: "[CWE-79] DOM XSS: assigning to outerHTML with unsanitized input."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: xss
+      cwe: CWE-79
+
+  - id: js-document-write-xss
+    pattern: document.write($INPUT)
+    message: "[CWE-79] DOM XSS via document.write() with dynamic input. Avoid document.write()."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: xss
+      cwe: CWE-79
+
+  - id: js-react-dangerouslysetinnerhtml
+    pattern: "<$EL dangerouslySetInnerHTML={{__html: $INPUT}} />"
+    message: "[CWE-79] React dangerouslySetInnerHTML with dynamic input. Sanitize with DOMPurify first."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: xss
+      cwe: CWE-79
+
+  - id: js-location-href-xss
+    patterns:
+      - pattern: window.location.href = $INPUT
+      - pattern-not: window.location.href = "..."
+    message: "[CWE-601] Open Redirect / XSS: assigning dynamic value to location.href."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: xss
+      cwe: CWE-601
+
+  # --- Path Traversal ---
+
+  - id: js-path-exposure-dirname
+    pattern-regex: '__dirname\s*\+'
+    message: "[CWE-22] Potential Path Traversal: __dirname concatenated with user input. Use path.resolve() and validate."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+      owasp: A01:2021
+
+  - id: js-path-traversal-fs-readfile
+    patterns:
+      - pattern: fs.readFile($PATH, ...)
+      - pattern-not: fs.readFile("...", ...)
+    message: "[CWE-22] Potential Path Traversal: fs.readFile() with dynamic path. Validate and sanitize."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  - id: js-path-traversal-fs-readfilesync
+    patterns:
+      - pattern: fs.readFileSync($PATH, ...)
+      - pattern-not: fs.readFileSync("...", ...)
+    message: "[CWE-22] Potential Path Traversal: fs.readFileSync() with dynamic path."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  - id: js-path-traversal-send-file
+    patterns:
+      - pattern: $RES.sendFile($PATH, ...)
+      - pattern-not: $RES.sendFile("...", ...)
+    message: "[CWE-22] Potential Path Traversal: Express res.sendFile() with dynamic path."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: path-traversal
+      cwe: CWE-22
+
+  # --- Cryptography ---
+
+  - id: js-weak-hash-md5
+    pattern: crypto.createHash('md5')
+    message: "[CWE-327] Weak hash algorithm MD5 detected. Use SHA-256 or stronger."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+      owasp: A02:2021
+
+  - id: js-weak-hash-sha1
+    pattern: crypto.createHash('sha1')
+    message: "[CWE-327] Weak hash algorithm SHA-1 detected. Use SHA-256 or stronger."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-327
+
+  - id: js-math-random-not-secure
+    pattern: Math.random()
+    message: "[CWE-338] Math.random() is not cryptographically secure. Use crypto.getRandomValues() or crypto.randomBytes()."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: cryptography
+      cwe: CWE-338
+
+  - id: js-hardcoded-secret
+    pattern-regex: '(password|secret|api_key|apiKey|token)\s*[:=]\s*[''"][^''"]{8,}[''"]'
+    message: "[CWE-798] Hardcoded secret/credential detected. Use environment variables."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-798
+      owasp: A02:2021
+
+  - id: js-hardcoded-aws-key
+    pattern-regex: 'AKIA[0-9A-Z]{16}'
+    message: "[CWE-798] Hardcoded AWS Access Key ID detected. Revoke and rotate immediately."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: CWE-798
+
+  - id: js-jwt-none-algorithm
+    pattern-regex: 'algorithm\s*:\s*[''"]none[''"]'
+    message: "[CWE-347] JWT 'none' algorithm allows token forgery. Enforce a strong signing algorithm."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-347
+
+  - id: js-jwt-no-verify
+    pattern: jwt.decode($TOKEN)
+    message: "[CWE-347] jwt.decode() skips signature verification. Use jwt.verify() with a secret/key."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-347
+
+  # --- SSRF ---
+
+  - id: js-ssrf-axios
+    patterns:
+      - pattern: axios.get($URL, ...)
+      - pattern-not: axios.get("...", ...)
+    message: "[CWE-918] Potential SSRF: axios.get() with a dynamic URL. Validate and allowlist URLs."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: ssrf
+      cwe: CWE-918
+      owasp: A10:2021
+
+  - id: js-ssrf-fetch
+    patterns:
+      - pattern: fetch($URL, ...)
+      - pattern-not: fetch("...", ...)
+    message: "[CWE-918] Potential SSRF: fetch() with a dynamic URL. Validate and allowlist URLs."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: ssrf
+      cwe: CWE-918
+
+  # --- Prototype Pollution ---
+
+  - id: js-prototype-pollution-merge
+    pattern-regex: '\w+\[(\w+)\]\[(\w+)\]\s*='
+    message: "[CWE-1321] Potential Prototype Pollution via bracket notation assignment. Validate keys against '__proto__', 'constructor', 'prototype'."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: prototype-pollution
+      cwe: CWE-1321
+
+  # --- Security Misconfiguration ---
+
+  - id: js-express-disable-xpoweredby
+    pattern-regex: 'app\.use\s*\(\s*express\(\)\s*\)'
+    message: "[CWE-16] Express default settings expose X-Powered-By header. Use helmet() middleware."
+    languages: [javascript]
+    severity: INFO
+    metadata:
+      category: misconfiguration
+      cwe: CWE-16
+      owasp: A05:2021
+
+  - id: js-cors-wildcard
+    pattern-regex: 'cors\s*\(\s*\{\s*origin\s*:\s*[''"][*][''"]'
+    message: "[CWE-942] CORS wildcard origin '*' allows any site to read responses. Restrict to known origins."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: misconfiguration
+      cwe: CWE-942
+      owasp: A05:2021
+
+  - id: js-cookie-no-httponly
+    pattern-regex: 'res\.cookie\s*\([^)]*(?!httpOnly\s*:\s*true)[^)]*\)'
+    message: "[CWE-1004] Cookie set without HttpOnly flag. Sensitive cookies should set httpOnly: true."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: misconfiguration
+      cwe: CWE-1004
+
+  - id: js-cookie-no-secure
+    pattern-regex: 'res\.cookie\s*\([^)]*(?!secure\s*:\s*true)[^)]*\)'
+    message: "[CWE-614] Cookie set without Secure flag. Sensitive cookies should set secure: true."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: misconfiguration
+      cwe: CWE-614
+
+  - id: js-node-tls-reject-unauthorized
+    pattern-regex: 'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*[''"]0[''"]'
+    message: "[CWE-295] TLS certificate verification disabled via NODE_TLS_REJECT_UNAUTHORIZED=0. Never use in production."
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      category: cryptography
+      cwe: CWE-295
+
+  # --- Sensitive Data Exposure ---
+
+  - id: js-console-log-sensitive
+    pattern-regex: 'console\.(log|error|warn|info)\s*\(.*[Pp]assword'
+    message: "[CWE-532] Potential password/sensitive data written to console log."
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      category: logging
+      cwe: CWE-532

@@ -6,5 +6,5 @@ tree-sitter-javascript
 transformers
 torch
 streamlit
-semgrep==1.148.0    
+semgrep
 pytest

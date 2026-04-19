@@ -17,7 +17,7 @@ def run_demo(target_dir):
     output_dir = "outputs"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        print(f"[*] Created output directory: {output_dir}")
+        print(f"=> Created output directory: {output_dir}")
 
     output_file_path = os.path.join(output_dir, "results.txt")
 
@@ -30,7 +30,7 @@ def run_demo(target_dir):
         out.write("="*50 + "\n\n")
 
     if not os.path.exists(target_dir):
-        print(f"[!] Target directory not found: {target_dir}")
+        print(f"!! Target directory not found: {target_dir}")
         return
 
     files = [f for f in os.listdir(target_dir) if os.path.isfile(os.path.join(target_dir, f))]
@@ -47,7 +47,7 @@ def run_demo(target_dir):
             continue
 
         count += 1
-        print(f"[*] Analyzing file {count}: {filename}")
+        print(f"=> Analyzing file {count}: {filename}")
 
         try:
             with open(target_file, 'r', encoding='utf-8', errors='ignore') as f:
@@ -85,14 +85,14 @@ def run_demo(target_dir):
                 out.write("\n\n")
 
         except Exception as e:
-            print(f"[!] Error processing {filename}: {e}")
+            print(f"!! Error processing {filename}: {e}")
 
-    print(f"[*] Success! Processed {count} files.")
-    print(f"[*] Results written to: {output_file_path}")
+    print(f"=> Success! Processed {count} files.")
+    print(f"=> Results written to: {output_file_path}")
 
 if __name__ == "__main__":
     target_dir = "tests"
     if not os.path.exists(target_dir):
-        print(f"[!] 'tests' directory not found. Please create it.")
+        print(f"! 'tests' directory not found. Please create it.")
     else:
         run_demo(target_dir)

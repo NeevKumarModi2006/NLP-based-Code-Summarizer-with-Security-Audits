@@ -70,3 +70,6 @@ rules:
     message: "Critical: 'gets' is unsafe and can cause buffer overflows. Use 'fgets'."
     languages: [c]
     severity: ERROR
+
+
+#   
