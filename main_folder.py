@@ -17,8 +17,13 @@ from src.inference import InferenceEngine
 
 LANG_MAP = {'.py': 'python', '.java': 'java', '.js': 'javascript', '.c': 'c'}
 
-BIG_FILE_THRESHOLD = 200
+# Files with MORE than this many lines of code are routed through the
+# chunked big-file pipeline (AST-based chunking + Meta-Transformer pass)
+# instead of the single-pass CodeT5 approach. This prevents the model from
+# silently truncating the tail of large files at the 512-token boundary.
+BIG_FILE_THRESHOLD = 200  # lines
 
+# Directories to skip entirely — never descend into these
 SKIP_DIRS = {
     'node_modules',
     '__pycache__',
@@ -32,7 +37,7 @@ SKIP_DIRS = {
     '.venv',
     'env',
     '.tox',
-    'target',
+    'target',       # Java/Maven build output
     'out',
     '.idea',
     '.vscode',
@@ -49,15 +54,24 @@ def risk_label(score: float) -> str:
     return "LOW"
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# STAGE A — BULK SEMGREP SCAN (one call for the whole directory)
+# ──────────────────────────────────────────────────────────────────────────────
+
 def bulk_semgrep_scan(dir_path: str) -> dict:
-    """this will run semgrep once on the entire directory and return findings grouped by file path."""
+    """
+    Run Semgrep once on the entire directory.
+    Returns dict mapping absolute file path → list of finding dicts.
+    Falls back to empty dict if Semgrep is unavailable.
+    """
     findings_map = defaultdict(list)
 
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        rules_path = os.path.join(script_dir, 'src', 'rules.yaml')
+        rules_path = os.path.join(script_dir, 'rules.yaml')
         config = rules_path if os.path.exists(rules_path) else 'p/security-audit'
 
+        # Setup PATH so semgrep is findable on Windows
         env = os.environ.copy()
         appdata = os.environ.get('APPDATA', '')
         user_scripts = os.path.join(appdata, 'Python', 'Python313', 'Scripts')
@@ -90,8 +104,12 @@ def bulk_semgrep_scan(dir_path: str) -> dict:
     return dict(findings_map)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# STAGE B — PER-FILE AI ANALYSIS
+# ──────────────────────────────────────────────────────────────────────────────
+
 def _calculate_risk_score(findings: list, file_path: str) -> float:
-    """this will compute a severity-weighted score capped at 10.0."""
+    """Simple severity-weighted score, capped at 10.0."""
     if not findings:
         return 0.0
     weights = {'ERROR': 3.0, 'WARNING': 2.0, 'INFO': 0.5}
@@ -107,11 +125,14 @@ def _calculate_risk_score(findings: list, file_path: str) -> float:
 
 def analyze_single_file(file_path: str, semgrep_findings: list,
                          inference: InferenceEngine) -> dict:
-    """this will run AST + CodeT5 on one file given pre-computed semgrep findings."""
+    """
+    Given pre-computed Semgrep findings, run AST + CodeT5 for one file.
+    Unsupported extensions are ignored — returns None.
+    """
     ext = os.path.splitext(file_path)[1].lower()
     language = LANG_MAP.get(ext)
     if not language:
-        return None
+        return None  # skip unsupported file types
 
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -119,6 +140,7 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
     except Exception as e:
         return {'file': file_path, 'error': str(e)}
 
+    # AST features
     try:
         ast_parser = ASTParser()
         feat_extractor = FeatureExtractor()
@@ -127,6 +149,7 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
     except Exception:
         features = {'sources': [], 'sinks': [], 'complexity': 0}
 
+    # If Semgrep gave us nothing for this file, run fallback scan
     findings = semgrep_findings
     if not findings:
         try:
@@ -137,19 +160,27 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
 
     risk_score = _calculate_risk_score(findings, file_path)
 
+    # ── AI Summary — adaptive routing ──────────────────────────────
+    # Large files are silently truncated by CodeT5 at ~512 tokens.
+    # Files exceeding BIG_FILE_THRESHOLD lines are routed through the
+    # chunked pipeline from main_big.py (AST chunking + Meta-Transformer)
+    # to guarantee the entire file is analysed by the model.
     line_count = code.count('\n') + 1
     fname = os.path.basename(file_path)
 
     if line_count > BIG_FILE_THRESHOLD:
+        # Big-file path: import lazily to avoid circular deps at module load time
         try:
             from main_big import chunk_file, analyze_chunk, meta_summarize
             chunks = chunk_file(file_path)
             chunk_results = [analyze_chunk(n, t, language, inference) for n, t in chunks]
             summary = meta_summarize(chunk_results, inference)
+            # Merge any additional findings from chunk analyses
             for cr in chunk_results:
                 for cf in cr.get('findings', []):
                     if cf not in findings:
                         findings.append(cf)
+            # Re-score with merged findings
             risk_score = _calculate_risk_score(findings, file_path)
         except Exception as e:
             log.warning(f"Big-file pipeline failed for {fname}, falling back to single-pass: {e}")
@@ -161,6 +192,7 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
             except Exception:
                 summary = "Summary unavailable."
     else:
+        # Normal single-pass path
         code_with_name = f"// File: {fname}\n{code}"
         enricher = PromptEnricher()
         prompt = enricher.construct_prompt(findings, features, code_with_name)
@@ -181,11 +213,13 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
     }
 
 
+# Thread-safe print lock
 _print_lock = threading.Lock()
 
 
 def _scan_one(fp: str, dir_path: str, findings: list,
               inference: InferenceEngine):
+    """Worker: analyze one file and return its result. Thread-safe."""
     rel = os.path.relpath(fp, dir_path)
     result = analyze_single_file(fp, findings, inference)
     if result is None:
@@ -201,12 +235,19 @@ def _scan_one(fp: str, dir_path: str, findings: list,
 def analyze_all_files(dir_path: str, semgrep_map: dict,
                       inference: InferenceEngine,
                       max_workers: int = 4) -> list:
-    """this will walk the directory and run AI analysis on every supported file in parallel."""
+    """
+    Walk the directory and run AI analysis on every supported file.
+    Files are processed in parallel using ThreadPoolExecutor.
+    Skips directories listed in SKIP_DIRS.
+    Returns list of result dicts.
+    """
     supported = set(LANG_MAP.keys())
     seen = set()
-    jobs = []
+    jobs = []  # list of (fp, findings)
 
+    # Collect all files first
     for root, dirs, files in os.walk(dir_path):
+        # Prune skip-listed dirs IN PLACE so os.walk never descends into them
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith('.')]
 
         for fname in files:
@@ -222,6 +263,7 @@ def analyze_all_files(dir_path: str, semgrep_map: dict,
     print(f"  Found {len(jobs)} file(s). Scanning with {max_workers} parallel workers...\n")
 
     results = []
+    # Submit all jobs in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_scan_one, fp, dir_path, findings, inference): fp
@@ -235,8 +277,19 @@ def analyze_all_files(dir_path: str, semgrep_map: dict,
     return results
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# STAGE C — PROJECT-LEVEL SECURITY MAP
+# ──────────────────────────────────────────────────────────────────────────────
+
 def project_meta_summary(results: list, dir_path: str) -> str:
-    """this will build a structured project overview by grouping per-file summaries by directory."""
+    """
+    Build a structured project overview by grouping per-file summaries
+    by their top-level directory.
+
+    CodeT5 is a code-to-summary model — asking it 'describe this project'
+    causes it to echo the instruction back. Instead we build the overview
+    from the already-generated per-file summaries, grouped by folder.
+    """
     groups = defaultdict(list)
     for r in sorted(results, key=lambda x: x['file']):
         rel = os.path.relpath(r['file'], dir_path)
@@ -245,7 +298,7 @@ def project_meta_summary(results: list, dir_path: str) -> str:
         fname = os.path.basename(r['file'])
         s = r.get('summary', '').strip()
         if s:
-            groups[group].append(f"{fname} -- {s}")
+            groups[group].append(f"{fname} — {s}")
 
     if not groups:
         return "No summaries could be generated."
@@ -268,7 +321,15 @@ def project_meta_summary(results: list, dir_path: str) -> str:
 
 def build_project_map(results: list, dir_path: str,
                       inference: InferenceEngine) -> str:
-    """this will aggregate per-file results into a project-level security map."""
+    """
+    Aggregate per-file results into a Project-Level Security Map string.
+    Sections:
+    - Project Overview (meta-summary)
+    - Stats & severity breakdown
+    - Top-5 riskiest files
+    - Cross-file vulnerability patterns
+    - Per-file AI summaries (alphabetical)
+    """
     lines = []
     sep = "=" * 65
 
@@ -278,6 +339,7 @@ def build_project_map(results: list, dir_path: str,
     lines.append(f"  Files     : {len(results)}")
     lines.append(sep)
 
+    # Filter out errored files
     good = [r for r in results if 'error' not in r]
     errored = [r for r in results if 'error' in r]
 
@@ -285,13 +347,15 @@ def build_project_map(results: list, dir_path: str,
         lines.append("\n  [!] No files could be analyzed.")
         return '\n'.join(lines)
 
-    lines.append(f"\n  {'-'*63}")
+    # ── PROJECT OVERVIEW ─────────────────────────────────────────
+    lines.append(f"\n  {'─'*63}")
     lines.append("  PROJECT OVERVIEW")
-    lines.append(f"  {'-'*63}")
+    lines.append(f"  {'─'*63}")
     overview = project_meta_summary(good, dir_path)
     for ov_line in overview.splitlines():
         lines.append(ov_line)
 
+    # ── STATS ────────────────────────────────────────────────────
     total_counts = {'ERROR': 0, 'WARNING': 0, 'INFO': 0}
     check_id_files = defaultdict(list)
 
@@ -305,38 +369,41 @@ def build_project_map(results: list, dir_path: str,
                 check_id_files[cid].append(rel)
 
     total_issues = sum(total_counts.values())
-    lines.append(f"\n  {'-'*63}")
+    lines.append(f"\n  {'─'*63}")
     lines.append("  SECURITY STATS")
-    lines.append(f"  {'-'*63}")
+    lines.append(f"  {'─'*63}")
     lines.append(f"  Total Issues : {total_issues}")
     lines.append(f"    ERROR   (High)   : {total_counts.get('ERROR', 0)}")
     lines.append(f"    WARNING (Medium) : {total_counts.get('WARNING', 0)}")
     lines.append(f"    INFO    (Low)    : {total_counts.get('INFO', 0)}")
 
+    # ── TOP RISKIEST FILES ───────────────────────────────────────
     ranked_risk = sorted(good, key=lambda r: r['risk_score'], reverse=True)
-    lines.append(f"\n  {'-'*63}")
+    lines.append(f"\n  {'─'*63}")
     lines.append("  TOP RISKIEST FILES")
-    lines.append(f"  {'-'*63}")
+    lines.append(f"  {'─'*63}")
     for r in ranked_risk[:5]:
         rel = os.path.relpath(r['file'], dir_path)
         label = risk_label(r['risk_score'])
         n = len(r.get('findings', []))
         lines.append(f"  [{label:8s}] {r['risk_score']:4.1f}/10  {rel}  ({n} finding(s))")
 
+    # ── CROSS-FILE PATTERNS ──────────────────────────────────────
     cross = {cid: fps for cid, fps in check_id_files.items() if len(fps) >= 2}
     if cross:
-        lines.append(f"\n  {'-'*63}")
+        lines.append(f"\n  {'─'*63}")
         lines.append("  CROSS-FILE VULNERABILITY PATTERNS")
-        lines.append(f"  {'-'*63}")
+        lines.append(f"  {'─'*63}")
         for cid, fps in sorted(cross.items(), key=lambda x: -len(x[1]))[:10]:
             lines.append(f"  {cid}")
             for fp in fps:
-                lines.append(f"     -> {fp}")
+                lines.append(f"     → {fp}")
 
+    # ── PER-FILE AI SUMMARIES (alphabetical) ────────────────────
     sorted_alpha = sorted(good, key=lambda r: r['file'])
-    lines.append(f"\n  {'-'*63}")
+    lines.append(f"\n  {'─'*63}")
     lines.append("  PER-FILE AI SUMMARIES")
-    lines.append(f"  {'-'*63}")
+    lines.append(f"  {'─'*63}")
     for r in sorted_alpha:
         rel = os.path.relpath(r['file'], dir_path)
         label = risk_label(r['risk_score'])
@@ -345,20 +412,25 @@ def build_project_map(results: list, dir_path: str,
         lines.append(f"  {rel}  [{label}  {r['risk_score']}/10]")
         lines.append(f"  {summary}")
 
+    # ── FILES WITH ERRORS ────────────────────────────────────────
     if errored:
-        lines.append(f"\n  {'-'*63}")
+        lines.append(f"\n  {'─'*63}")
         lines.append("  FILES WITH ERRORS (skipped)")
         for r in errored:
             rel = os.path.relpath(r['file'], dir_path)
-            lines.append(f"  {rel} -- {r['error']}")
+            lines.append(f"  {rel} — {r['error']}")
 
     lines.append(f"\n{sep}\n")
     return '\n'.join(lines)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# ENTRY POINT
+# ──────────────────────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="AI Security Auditor -- Directory-Wide Scanner with Project Security Map"
+        description="AI Security Auditor — Directory-Wide Scanner with Project Security Map"
     )
     parser.add_argument(
         "--dir", required=True,
@@ -380,11 +452,13 @@ if __name__ == "__main__":
     inference = InferenceEngine()
     print("[*] Model loaded.\n")
 
+    # Stage A — bulk Semgrep
     print("[*] Running bulk Semgrep scan on directory...")
     semgrep_map = bulk_semgrep_scan(dir_path)
     total_semgrep = sum(len(v) for v in semgrep_map.values())
     print(f"    Semgrep found {total_semgrep} finding(s) across {len(semgrep_map)} file(s)\n")
 
+    # Stage B — per-file AI analysis
     print("[*] Analyzing files...\n")
     results = analyze_all_files(dir_path, semgrep_map, inference)
 
@@ -392,12 +466,14 @@ if __name__ == "__main__":
         print("[!] No supported source files found.")
         sys.exit(0)
 
+    # Stage C — project map
     project_map = build_project_map(results, dir_path, inference)
     try:
         print(project_map)
     except UnicodeEncodeError:
         print(project_map.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
 
+    # Save if requested
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as out:
             out.write(project_map)

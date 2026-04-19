@@ -11,14 +11,19 @@ class Scanner:
         self.logger = logging.getLogger(__name__)
 
     def scan_file(self, file_path: str):
-        """this will run semgrep on a single file, falling back to internal regex scan if needed."""
+        """
+        Runs semgrep on a single file using the native binary.
+        Falls back to internal Regex/AST scan if Semgrep fails or finds nothing.
+        """
         try:
+            # 1. SETUP ENVIRONMENT
             env = os.environ.copy()
             appdata_path = os.environ.get('APPDATA', '')
             user_scripts = os.path.join(appdata_path, 'Python', 'Python313', 'Scripts')
             if os.path.exists(user_scripts):
                 env['PATH'] = user_scripts + os.pathsep + env.get('PATH', '')
 
+            # 2. CONSTRUCT COMMAND
             script_dir = os.path.dirname(os.path.abspath(__file__))
             rules_path = os.path.join(script_dir, '..', 'rules.yaml')
             rules_path = os.path.normpath(rules_path)
@@ -26,11 +31,13 @@ class Scanner:
 
             cmd = f'semgrep scan --config "{config}" --json --quiet "{file_path}"'
 
+            # 3. EXECUTE SCAN
             result = subprocess.run(cmd, capture_output=True, text=True, env=env, shell=True)
 
             findings = []
             risk_score = 0.0
 
+            # 4. ROBUST JSON PARSING
             if result.stdout:
                 try:
                     raw_output = result.stdout.strip()
@@ -46,6 +53,7 @@ class Scanner:
                 except json.JSONDecodeError:
                     self.logger.error("Failed to decode Semgrep JSON output.")
 
+            # 5. FALLBACK LOGIC
             if not findings:
                 self.logger.info("No Semgrep findings. Running internal fallback scanner...")
                 return self._fallback_scan(file_path)
@@ -72,7 +80,27 @@ class Scanner:
         return parsed_findings
 
     def _fallback_scan(self, file_path: str):
-        """this will run an offline regex scanner mirroring rules.yaml when semgrep is unavailable."""
+        """
+        PURPOSE: Offline security scanner — a direct regex mirror of rules.yaml.
+
+        When Semgrep is unavailable (not installed, network error, or returns no results),
+        this method provides equivalent multi-category coverage using compiled regexes mapped
+        1:1 to the rule IDs and categories defined in rules.yaml. It covers all 4 supported
+        languages (Python, JavaScript, Java, C) across the following attack categories:
+
+          - Injection        : SQL, Command, Code (eval/exec), SSTI, LDAP, NoSQL, ReDoS
+          - Deserialization  : pickle, yaml, jsonpickle, dill, ObjectInputStream, XMLDecoder, XStream
+          - Cryptography     : MD5, SHA-1, DES, AES-ECB, rand/random, predictable seeds
+          - Secrets          : Hardcoded passwords, AWS keys, JWT secrets, API keys
+          - Path Traversal   : open(), send_file, fs.readFile, new File(), Paths.get()
+          - XSS              : innerHTML, outerHTML, document.write, dangerouslySetInnerHTML
+          - SSRF             : requests.get, urllib, axios, fetch, URL.openConnection
+          - Prototype Pollution : bracket-notation key assignment
+          - Misconfiguration : CORS wildcard, insecure cookies, Flask debug=True, TLS bypass
+          - Logging          : passwords in console/log output, logging.exception
+
+        Each finding includes: rule_id, file, line number, CWE-tagged message, severity, and snippet.
+        """
         findings = []
         try:
             ext = os.path.splitext(file_path)[1].lower()
@@ -85,13 +113,20 @@ class Scanner:
                 content = f.read()
             lines = content.splitlines()
 
+            # ----------------------------------------------------------------
+            # SHARED PATTERNS (apply to all languages)
+            # ----------------------------------------------------------------
             shared_patterns = [
                 (r'AKIA[0-9A-Z]{16}',
                  '[CWE-798] Hardcoded AWS Access Key ID detected. Revoke and rotate immediately.',
                  'ERROR', 'fallback.shared.aws-key'),
             ]
 
+            # ----------------------------------------------------------------
+            # PYTHON PATTERNS  (mirrors rules.yaml Python section)
+            # ----------------------------------------------------------------
             python_patterns = [
+                # SQL Injection
                 (r'\.execute\s*\(\s*f["\']',
                  '[CWE-89] SQL Injection via f-string in execute(). Use parameterized queries.',
                  'ERROR', 'fallback.py.sqli-fstring'),
@@ -104,6 +139,7 @@ class Scanner:
                 (r'\.executemany\s*\(\s*\w[^"\'()\n]*\+',
                  '[CWE-89] SQL Injection in executemany() via string concat.',
                  'ERROR', 'fallback.py.sqli-executemany'),
+                # Command Injection
                 (r'subprocess\.Popen\b.*shell\s*=\s*True',
                  '[CWE-78] Command Injection: subprocess.Popen with shell=True.',
                  'ERROR', 'fallback.py.cmd-popen'),
@@ -119,6 +155,7 @@ class Scanner:
                 (r'\bos\.popen\s*\(',
                  '[CWE-78] Command Injection via os.popen(). Use subprocess module.',
                  'ERROR', 'fallback.py.cmd-os-popen'),
+                # Code Injection
                 (r'\beval\s*\(',
                  '[CWE-94] Code Injection via eval(). Never pass user-controlled data.',
                  'ERROR', 'fallback.py.code-eval'),
@@ -128,15 +165,19 @@ class Scanner:
                 (r'\bcompile\s*\(\s*\w',
                  '[CWE-94] Code Injection risk: compile() with dynamic input.',
                  'WARNING', 'fallback.py.code-compile'),
+                # SSTI
                 (r'jinja2\.Template\s*\(\s*\w',
                  '[CWE-94] SSTI: Jinja2 template built from dynamic input. Never render user templates.',
                  'ERROR', 'fallback.py.ssti-jinja2'),
+                # LDAP
                 (r'\.search_s\s*\(',
                  '[CWE-90] Potential LDAP Injection. Sanitize all filter components.',
                  'WARNING', 'fallback.py.ldap-injection'),
+                # XPath
                 (r'\.xpath\s*\(\s*\w',
                  '[CWE-643] Potential XPath Injection. Use parameterized XPath queries.',
                  'WARNING', 'fallback.py.xpath-injection'),
+                # Deserialization
                 (r'\bpickle\.loads\s*\(',
                  '[CWE-502] Unsafe deserialization: pickle.loads() can execute arbitrary code.',
                  'ERROR', 'fallback.py.deser-pickle-loads'),
@@ -161,6 +202,7 @@ class Scanner:
                 (r'\bmarshal\.loads\s*\(',
                  '[CWE-502] Unsafe deserialization: marshal.loads() on untrusted data.',
                  'WARNING', 'fallback.py.deser-marshal'),
+                # Cryptography
                 (r'\bhashlib\.md5\s*\(',
                  '[CWE-327] Weak hash MD5. Use hashlib.sha256() or stronger.',
                  'WARNING', 'fallback.py.crypto-md5'),
@@ -185,30 +227,35 @@ class Scanner:
                 (r'\brandom\.randint\s*\(',
                  '[CWE-338] Non-cryptographic PRNG (randint). Use secrets.randbelow() for tokens.',
                  'WARNING', 'fallback.py.crypto-prng-randint'),
+                # Secrets
                 (r'\bpassword\s*=\s*["\'][^"\']{1,}["\']',
                  '[CWE-259] Hardcoded password detected. Use environment variables.',
                  'ERROR', 'fallback.py.secrets-password'),
                 (r'\bSECRET_KEY\s*=\s*["\'][^"\']{1,}["\']',
                  '[CWE-321] Hardcoded SECRET_KEY. Rotate immediately and use env vars.',
                  'ERROR', 'fallback.py.secrets-secret-key'),
+                # Path Traversal
                 (r'\bsend_file\s*\(\s*\w',
                  '[CWE-22] Path Traversal in Flask send_file(). Use safe_join().',
                  'ERROR', 'fallback.py.path-send-file'),
                 (r'\bos\.path\.join\s*\(\s*\w[^,)]+,\s*\w',
                  '[CWE-22] os.path.join with user-controlled input can escape base directory.',
                  'WARNING', 'fallback.py.path-os-path-join'),
+                # XXE (Python XML)
                 (r'xml\.etree\.ElementTree\.parse\s*\(',
                  '[CWE-611] XXE: ElementTree.parse is not safe against XXE by default.',
                  'WARNING', 'fallback.py.xxe-etree'),
                 (r'lxml\.etree\.parse\s*\(',
                  '[CWE-611] XXE: lxml.etree.parse without a safe XMLParser.',
                  'ERROR', 'fallback.py.xxe-lxml'),
+                # SSRF
                 (r'requests\.get\s*\(\s*\w',
                  '[CWE-918] Potential SSRF: requests.get() with dynamic URL. Validate and allowlist.',
                  'WARNING', 'fallback.py.ssrf-requests'),
                 (r'urllib\.request\.urlopen\s*\(\s*\w',
                  '[CWE-918] Potential SSRF via urllib.request.urlopen(). Validate the URL.',
                  'WARNING', 'fallback.py.ssrf-urllib'),
+                # Misconfiguration
                 (r'app\.run\s*\(.*debug\s*=\s*True',
                  '[CWE-94] Flask debug=True enables remote code execution. Never use in production.',
                  'ERROR', 'fallback.py.misc-flask-debug'),
@@ -218,9 +265,11 @@ class Scanner:
                 (r'\bredirect\s*\(\s*\w',
                  '[CWE-601] Open Redirect: redirect() with dynamic URL. Validate destination.',
                  'WARNING', 'fallback.py.open-redirect'),
+                # ORM raw SQL
                 (r'\.objects\.raw\s*\(\s*\w[^"\'()\n]*\+',
                  '[CWE-89] SQL Injection via Django raw() with string concatenation.',
                  'ERROR', 'fallback.py.django-raw-sqli'),
+                # Logging
                 (r'\blogging\.exception\s*\(',
                  '[CWE-209] Logging full exception may expose stack traces. Redact sensitive fields.',
                  'INFO', 'fallback.py.logging-exception'),
@@ -229,7 +278,11 @@ class Scanner:
                  'INFO', 'fallback.py.print-sensitive'),
             ]
 
+            # ----------------------------------------------------------------
+            # JAVASCRIPT / NODE.JS PATTERNS  (mirrors rules.yaml JS section)
+            # ----------------------------------------------------------------
             js_patterns = [
+                # Code Injection
                 (r'\beval\s*\(',
                  '[CWE-94] Code Injection via eval(). Never pass user data to eval().',
                  'ERROR', 'fallback.js.code-eval'),
@@ -242,27 +295,33 @@ class Scanner:
                 (r'setInterval\s*\(\s*["\']',
                  '[CWE-94] Code Injection: setInterval() with string arg evaluates it as code.',
                  'ERROR', 'fallback.js.code-setinterval'),
+                # Command Injection
                 (r'child_process\.exec\s*\(\s*\w',
                  '[CWE-78] Command Injection: child_process.exec() with dynamic input. Use execFile().',
                  'ERROR', 'fallback.js.cmd-exec'),
                 (r'child_process\.execSync\s*\(\s*\w',
                  '[CWE-78] Command Injection via execSync() with dynamic argument.',
                  'ERROR', 'fallback.js.cmd-execsync'),
+                # SQL Injection
                 (r'\.query\s*\(\s*`[^`]*\$\{',
                  '[CWE-89] SQL Injection via template literal in db.query().',
                  'ERROR', 'fallback.js.sqli-template-literal'),
                 (r'\.query\s*\(["\'][^"\']*["\'\s]*\+',
                  '[CWE-89] SQL Injection via string concat in db.query(). Use parameterized queries.',
                  'ERROR', 'fallback.js.sqli-concat'),
+                # SSTI
                 (r'pug\.render\s*\(\s*\w',
                  '[CWE-94] SSTI: pug.render() with dynamic template string.',
                  'ERROR', 'fallback.js.ssti-pug'),
+                # ReDoS
                 (r'new\s+RegExp\s*\(\s*\w',
                  '[CWE-1333] ReDoS: RegExp from dynamic input can cause catastrophic backtracking.',
                  'WARNING', 'fallback.js.redos'),
+                # NoSQL Injection
                 (r'\.find\s*\(\s*\{[^}]*:\s*\w',
                  '[CWE-943] Potential NoSQL Injection in find(). Validate query operators.',
                  'WARNING', 'fallback.js.nosqli-find'),
+                # XSS
                 (r'\.innerHTML\s*=',
                  '[CWE-79] DOM XSS: innerHTML assignment. Use textContent or DOMPurify.',
                  'ERROR', 'fallback.js.xss-innerhtml'),
@@ -278,6 +337,7 @@ class Scanner:
                 (r'window\.location\.href\s*=\s*\w',
                  '[CWE-601] Open Redirect / XSS: assigning dynamic value to location.href.',
                  'WARNING', 'fallback.js.xss-location-href'),
+                # Path Traversal
                 (r'__dirname\s*\+',
                  '[CWE-22] Path Traversal: __dirname concatenated with user input. Use path.resolve().',
                  'WARNING', 'fallback.js.path-dirname'),
@@ -290,6 +350,7 @@ class Scanner:
                 (r'res\.sendFile\s*\(\s*\w',
                  '[CWE-22] Path Traversal: Express res.sendFile() with dynamic path.',
                  'ERROR', 'fallback.js.path-sendfile'),
+                # Cryptography
                 (r"crypto\.createHash\s*\(\s*['\"]md5['\"]",
                  '[CWE-327] Weak hash MD5. Use SHA-256 or stronger.',
                  'WARNING', 'fallback.js.crypto-md5'),
@@ -299,36 +360,46 @@ class Scanner:
                 (r'\bMath\.random\s*\(',
                  '[CWE-338] Math.random() is not cryptographically secure. Use crypto.randomBytes().',
                  'WARNING', 'fallback.js.crypto-math-random'),
+                # JWT
                 (r"algorithm\s*:\s*['\"]none['\"]",
                  "[CWE-347] JWT 'none' algorithm allows token forgery. Enforce a strong algorithm.",
                  'ERROR', 'fallback.js.jwt-none-alg'),
                 (r'\bjwt\.decode\s*\(',
                  '[CWE-347] jwt.decode() skips signature verification. Use jwt.verify().',
                  'ERROR', 'fallback.js.jwt-decode-noverify'),
+                # Secrets
                 (r'(password|secret|api_key|apiKey|token)\s*[:=]\s*["\'][^"\']{8,}["\']',
                  '[CWE-798] Hardcoded secret/credential detected. Use environment variables.',
                  'ERROR', 'fallback.js.secrets-hardcoded'),
+                # SSRF
                 (r'axios\.get\s*\(\s*\w',
                  '[CWE-918] Potential SSRF: axios.get() with dynamic URL. Validate and allowlist.',
                  'WARNING', 'fallback.js.ssrf-axios'),
                 (r'\bfetch\s*\(\s*\w',
                  '[CWE-918] Potential SSRF: fetch() with dynamic URL. Validate and allowlist.',
                  'WARNING', 'fallback.js.ssrf-fetch'),
+                # Prototype Pollution
                 (r'\w+\[\w+\]\[\w+\]\s*=',
                  "[CWE-1321] Potential Prototype Pollution via bracket notation. Validate keys against '__proto__'.",
                  'WARNING', 'fallback.js.proto-pollution'),
+                # Misconfiguration
                 (r"cors\s*\(\s*\{\s*origin\s*:\s*['\"][*]['\"]",
                  '[CWE-942] CORS wildcard origin allows any site to read responses. Restrict origins.',
                  'WARNING', 'fallback.js.misc-cors-wildcard'),
                 (r"NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]0['\"]",
                  '[CWE-295] TLS certificate verification disabled. Never use in production.',
                  'ERROR', 'fallback.js.misc-tls-bypass'),
+                # Logging
                 (r'console\.(log|error|warn|info)\s*\(.*[Pp]assword',
                  '[CWE-532] Password/sensitive data written to console log.',
                  'WARNING', 'fallback.js.logging-sensitive'),
             ]
 
+            # ----------------------------------------------------------------
+            # JAVA PATTERNS  (mirrors rules.yaml Java section)
+            # ----------------------------------------------------------------
             java_patterns = [
+                # SQL Injection
                 (r'executeQuery\s*\(\s*".*"\s*\+',
                  '[CWE-89] SQL Injection via string concat in executeQuery(). Use PreparedStatement.',
                  'ERROR', 'fallback.java.sqli-executequery'),
@@ -341,12 +412,14 @@ class Scanner:
                 (r'createQuery\s*\(\s*String\.format\s*\(',
                  '[CWE-89] SQL Injection via String.format() in Hibernate createQuery().',
                  'ERROR', 'fallback.java.sqli-hibernate-format'),
+                # Command Injection
                 (r'Runtime\.getRuntime\(\)\.exec\s*\(\s*[^"]',
                  '[CWE-78] Command Injection via Runtime.exec() with dynamic argument.',
                  'ERROR', 'fallback.java.cmd-runtime-exec'),
                 (r'new\s+ProcessBuilder\s*\(\s*[^"]',
                  '[CWE-78] Command Injection: ProcessBuilder with dynamic arguments.',
                  'ERROR', 'fallback.java.cmd-processbuilder'),
+                # XXE
                 (r'DocumentBuilderFactory\.newInstance\s*\(\)',
                  '[CWE-611] XXE: DocumentBuilderFactory without disabling external entities.',
                  'ERROR', 'fallback.java.xxe-documentbuilder'),
@@ -356,6 +429,7 @@ class Scanner:
                 (r'XMLInputFactory\.newInstance\s*\(\)',
                  '[CWE-611] XXE: XMLInputFactory without IS_SUPPORTING_EXTERNAL_ENTITIES set to false.',
                  'ERROR', 'fallback.java.xxe-xmlinputfactory'),
+                # Deserialization
                 (r'new\s+ObjectInputStream\s*\(',
                  '[CWE-502] Unsafe Deserialization via ObjectInputStream.',
                  'ERROR', 'fallback.java.deser-objectinputstream'),
@@ -365,6 +439,7 @@ class Scanner:
                 (r'new\s+XStream\s*\(\)',
                  '[CWE-502] XStream with default settings deserializes arbitrary classes.',
                  'ERROR', 'fallback.java.deser-xstream'),
+                # Cryptography
                 (r'MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)',
                  '[CWE-327] Weak hash MD5. Use SHA-256 or stronger.',
                  'WARNING', 'fallback.java.crypto-md5'),
@@ -380,30 +455,40 @@ class Scanner:
                 (r'new\s+Random\s*\(\s*\d+',
                  '[CWE-336] Predictable PRNG seed. Use SecureRandom for security-sensitive operations.',
                  'WARNING', 'fallback.java.crypto-predictable-seed'),
-                (r'(password|secret|passwd|pwd)\s*=\s*"[^"]+"',
+                # Secrets
+                (r'(password|secret|passwd|pwd|api_key|apiKey|API_KEY|token|access_key|secret_key)\s*=\s*"[^"]+"',
                  '[CWE-259] Hardcoded password/secret detected. Use environment variables.',
                  'ERROR', 'fallback.java.secrets-password'),
+                # Path Traversal
                 (r'new\s+File\s*\([^"]*\+[^"]*\)',
                  '[CWE-22] Path Traversal: new File() with string concat. Validate and canonicalize.',
                  'ERROR', 'fallback.java.path-file'),
                 (r'Paths\.get\s*\([^"]*\+[^"]*\)',
                  '[CWE-22] Path Traversal: Paths.get() with string concat.',
                  'ERROR', 'fallback.java.path-paths-get'),
+                # SSRF
                 (r'new\s+URL\s*\(\s*\w.*\)\.openConnection\s*\(\)',
                  '[CWE-918] Potential SSRF: URL.openConnection() with dynamic URL.',
                  'WARNING', 'fallback.java.ssrf-url-openconnection'),
+                # XSS
                 (r'response\.getWriter\(\)\.write\s*\(\s*\w',
                  '[CWE-79] XSS: unsanitized user input written to HTTP response. Encode output.',
                  'ERROR', 'fallback.java.xss-response-write'),
+                # Log4Shell
                 (r'\$\{jndi:',
                  '[CVE-2021-44228] Log4Shell pattern detected. Update Log4j >= 2.17.1.',
                  'ERROR', 'fallback.java.log4shell'),
+                # Logging
                 (r'log\.(info|debug|warn|error)\s*\(.*[Pp]assword',
                  '[CWE-532] Password/sensitive data written to logs.',
                  'WARNING', 'fallback.java.logging-password'),
             ]
 
+            # ----------------------------------------------------------------
+            # C / C++ PATTERNS  (mirrors rules.yaml C section)
+            # ----------------------------------------------------------------
             c_patterns = [
+                # Buffer Overflows
                 (r'\bgets\s*\(',
                  '[CWE-120] Critical: gets() has no bounds check. Use fgets().',
                  'ERROR', 'fallback.c.buff-gets'),
@@ -423,10 +508,10 @@ class Scanner:
                  '[CWE-120] Unbounded scanf("%s"). Specify a width limit or use fgets().',
                  'ERROR', 'fallback.c.buff-scanf'),
                 (r'\bmemcpy\s*\(',
-                 '[CWE-120] memcpy() -- verify that size argument does not exceed destination buffer.',
+                 '[CWE-120] memcpy() — verify that size argument does not exceed destination buffer.',
                  'WARNING', 'fallback.c.buff-memcpy'),
                 (r'\bmemmove\s*\(',
-                 '[CWE-120] memmove() -- verify that size does not exceed destination buffer.',
+                 '[CWE-120] memmove() — verify that size does not exceed destination buffer.',
                  'WARNING', 'fallback.c.buff-memmove'),
                 (r'\balloca\s*\(',
                  '[CWE-770] alloca() allocates on the stack with no overflow check. Use malloc().',
@@ -434,6 +519,7 @@ class Scanner:
                 (r'\bstrtok\s*\(',
                  '[CWE-330] strtok() is not thread-safe. Use strtok_r() in multi-threaded contexts.',
                  'WARNING', 'fallback.c.strtok-not-reentrant'),
+                # Command Injection
                 (r'\bsystem\s*\(',
                  '[CWE-78] Command Injection via system(). Use execv() with sanitized argument arrays.',
                  'ERROR', 'fallback.c.cmd-system'),
@@ -443,6 +529,7 @@ class Scanner:
                 (r'\bexeclp\s*\(',
                  '[CWE-78] Command Injection via execlp(). Avoid user-controlled path arguments.',
                  'WARNING', 'fallback.c.cmd-execlp'),
+                # Format String
                 (r'\bprintf\s*\(\s*\w[^,)"]*\)',
                  "[CWE-134] Format String: printf() with non-literal format. Use printf('%s', str).",
                  'ERROR', 'fallback.c.fmt-printf'),
@@ -452,15 +539,18 @@ class Scanner:
                 (r'\bsyslog\s*\(\s*\w+\s*,\s*\w',
                  '[CWE-134] Format String: syslog() with non-literal format.',
                  'ERROR', 'fallback.c.fmt-syslog'),
+                # Memory
                 (r'malloc\s*\(\s*\w+\s*\*\s*\w+\s*\)',
                  '[CWE-190] Integer Overflow in malloc size expression. Use checked arithmetic or calloc().',
                  'WARNING', 'fallback.c.mem-integer-overflow-malloc'),
+                # Cryptography / PRNG
                 (r'\brand\s*\(',
                  '[CWE-338] rand() is not cryptographically secure. Use /dev/urandom or getrandom().',
                  'WARNING', 'fallback.c.crypto-rand'),
                 (r'srand\s*\(\s*time\s*\(',
                  '[CWE-337] Predictable PRNG seed via time(). Use a cryptographic seed source.',
                  'WARNING', 'fallback.c.crypto-srand-time'),
+                # Race Conditions
                 (r'\btmpnam\s*\(',
                  '[CWE-377] tmpnam() is vulnerable to TOCTOU race conditions. Use mkstemp().',
                  'ERROR', 'fallback.c.race-tmpnam'),
@@ -478,6 +568,7 @@ class Scanner:
 
             all_patterns = shared_patterns + lang_patterns.get(language, [])
 
+            # Run all patterns, dedup by (rule_id, line_number)
             seen = set()
             for pattern, msg, sev, rule_id in all_patterns:
                 flags = re.IGNORECASE if language == 'java' else 0
@@ -503,7 +594,11 @@ class Scanner:
             return [], 0.0
 
     def _calculate_risk_score(self, findings: list, file_path: str) -> float:
-        """this will calculate a risk score from 0.0 to 10.0 using severity-first weighting."""
+        """
+        Calculates a Risk Score (0.0 - 10.0) using a Severity-First approach.
+        - High Risk (ERROR) triggers immediate high base score >= 7.0.
+        - Cumulative increments for multiple issues.
+        """
         if not findings:
             return 0.0
 
@@ -522,6 +617,7 @@ class Scanner:
 
         score = max_base_score
 
+        # Subtract one instance of the dominant severity (don't double-count the base)
         for s in ['ERROR', 'WARNING', 'INFO']:
             if SEVERITY_BASE[s] == max_base_score and severity_counts[s] > 0:
                 severity_counts[s] -= 1

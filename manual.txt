@@ -1,13 +1,47 @@
-# to run test case parser and extractor
-python demo_phase.py
+# AI Security Auditor – Instruction Manual
 
-# to run the web interface
-python -m streamlit  run web/app.py
+This system provides both a beautiful Graphical User Interface (GUI) and a highly robust Command Line Interface (CLI) for headless scanning.
 
+---
 
-python main.py --file "C:\Users\Neev\SomeOtherFolder\mycode.py"
-python main_big.py --file "C:\Users\Neev\SomeOtherFolder\mycode.py"
+## 1. Graphical User Interface (GUI)
+The GUI is divided into two parts: the Streamlit Orchestrator (where you upload files and run audits) and the React Dashboard (where advanced energy analytics are rendered).
 
+### Starting the Streamlit Orchestrator
+Open your terminal in the root directory and run:
+> python -m streamlit run web/app.py
 
-python main_folder.py --dir src/
-python main_folder.py --dir . --output security_report.txt
+This will automatically open the AI Security Auditor on http://localhost:8501.
+
+### Starting the React Advanced Analytics
+Open a new terminal window, navigate to the frontend folder, and start the Vite dev server:
+> cd web/frontend
+> npm run dev
+
+This will launch the dashboard on http://localhost:5173. When you run audits in Streamlit, it will automatically route the energy and performance data to this React server.
+
+---
+
+## 2. Command Line Interface (CLI)
+If you want to bypass the web interfaces and run bulk code analyses directly via your terminal, the system provides 3 distinct CLI execution modes depending on your payload requirements:
+
+### Mode 1: Small Files
+For scanning single, standard-sized source code files rapidly. Run by providing the `--file` flag:
+> python main.py --file "path/to/mycode.py"
+
+### Mode 2: Big Files
+Optimized for analyzing monolithic files or exceptionally large scripts that require chunking or expanded memory overhead. Run by providing the `--file` flag:
+> python main_big.py --file "path/to/mycode.py"
+
+### Mode 3: Directory Scan
+The massive recursive scanner. This crawls through an entire project folder structure, intelligently mapping and analyzing every supported code file it finds, then aggregating the vulnerabilities. Run by providing the `--dir` flag:
+> python main_folder.py --dir "path/to/project/src"
+
+*Optional*: Save the security map report to a text file:
+> python main_folder.py --dir . --output security_report.txt
+
+---
+
+## 3. Demo Phase Execution
+To run the underlying AST parser and feature extraction module on test assets independently:
+> python demo_phase.py

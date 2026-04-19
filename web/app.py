@@ -191,6 +191,7 @@ section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
     display: flex; align-items: center; gap: 12px;
     padding: 10px 14px; background: var(--bg-card);
     border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; border: 1px solid var(--border);
+    color: var(--text-primary) !important;
 }
 .step-status { margin-left: auto; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
 .step-done .step-status { color: var(--accent); }
@@ -362,7 +363,6 @@ with st.sidebar:
         <i class="ti ti-shield-check" style="color:var(--accent);"></i> Semgrep + AST/Regex Fallback
     </div>
 
-    <!-- REACT LINK IN SIDEBAR -->
     <div style="margin-top:32px; margin-bottom: 12px;">
         <div class="sb-section-title">Visualisation</div>
     </div>

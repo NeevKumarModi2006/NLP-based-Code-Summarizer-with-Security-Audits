@@ -916,7 +916,7 @@ rules:
       cwe: CWE-336
 
   - id: java-hardcoded-password
-    pattern-regex: '(password|secret|passwd|pwd)\s*=\s*"[^"]+'
+    pattern-regex: '(password|secret|passwd|pwd|api_key|apiKey|API_KEY|token|access_key|secret_key)\s*=\s*"[^"]+'
     message: "[CWE-259] Hardcoded password/secret detected. Use environment variables or a secrets manager."
     languages: [java]
     severity: ERROR
