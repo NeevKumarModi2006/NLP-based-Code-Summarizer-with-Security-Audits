@@ -113,18 +113,12 @@ class Scanner:
                 content = f.read()
             lines = content.splitlines()
 
-            # ----------------------------------------------------------------
-            # SHARED PATTERNS (apply to all languages)
-            # ----------------------------------------------------------------
             shared_patterns = [
                 (r'AKIA[0-9A-Z]{16}',
                  '[CWE-798] Hardcoded AWS Access Key ID detected. Revoke and rotate immediately.',
                  'ERROR', 'fallback.shared.aws-key'),
             ]
 
-            # ----------------------------------------------------------------
-            # PYTHON PATTERNS  (mirrors rules.yaml Python section)
-            # ----------------------------------------------------------------
             python_patterns = [
                 # SQL Injection
                 (r'\.execute\s*\(\s*f["\']',
@@ -278,9 +272,6 @@ class Scanner:
                  'INFO', 'fallback.py.print-sensitive'),
             ]
 
-            # ----------------------------------------------------------------
-            # JAVASCRIPT / NODE.JS PATTERNS  (mirrors rules.yaml JS section)
-            # ----------------------------------------------------------------
             js_patterns = [
                 # Code Injection
                 (r'\beval\s*\(',
@@ -395,9 +386,6 @@ class Scanner:
                  'WARNING', 'fallback.js.logging-sensitive'),
             ]
 
-            # ----------------------------------------------------------------
-            # JAVA PATTERNS  (mirrors rules.yaml Java section)
-            # ----------------------------------------------------------------
             java_patterns = [
                 # SQL Injection
                 (r'executeQuery\s*\(\s*".*"\s*\+',
@@ -484,9 +472,6 @@ class Scanner:
                  'WARNING', 'fallback.java.logging-password'),
             ]
 
-            # ----------------------------------------------------------------
-            # C / C++ PATTERNS  (mirrors rules.yaml C section)
-            # ----------------------------------------------------------------
             c_patterns = [
                 # Buffer Overflows
                 (r'\bgets\s*\(',

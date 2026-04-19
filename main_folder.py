@@ -478,3 +478,4 @@ if __name__ == "__main__":
         with open(args.output, 'w', encoding='utf-8') as out:
             out.write(project_map)
         print(f"[*] Project map saved to: {args.output}")
+
