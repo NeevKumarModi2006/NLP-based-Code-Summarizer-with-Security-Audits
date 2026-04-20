@@ -638,7 +638,7 @@ if big_uploaded:
             prog_ph.progress(1.0, text="Meta-Transformer pass...")
             col_big.begin_phase("Meta-Transformer")
             with st.spinner("Meta-Transformer assembling global summary..."):
-                meta_sum = meta_summarize(chunk_results, inference_big)
+                meta_sum = meta_summarize(chunk_results, inference_big, lang_big)
             col_big.end_phase()
 
         prog_ph.empty()

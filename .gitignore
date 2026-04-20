@@ -54,3 +54,5 @@ web/frontend/package-lock.json
 debug_output*.txt
 *.docx
 ~$*
+
+test_*

@@ -26,7 +26,7 @@ class InferenceEngine:
             with torch.no_grad():
                 full_summary_ids = self.model.generate(
                     inputs["input_ids"],
-                    max_length=64,
+                    max_length=max_length,
                     min_length=10,
                     num_beams=4,
                     repetition_penalty=2.0,

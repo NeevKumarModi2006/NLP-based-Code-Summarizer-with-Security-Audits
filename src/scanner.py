@@ -32,7 +32,7 @@ class Scanner:
             cmd = f'semgrep scan --config "{config}" --json --quiet "{file_path}"'
 
             # 3. EXECUTE SCAN
-            result = subprocess.run(cmd, capture_output=True, text=True, env=env, shell=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env, shell=True, encoding='utf-8', errors='ignore')
 
             findings = []
             risk_score = 0.0

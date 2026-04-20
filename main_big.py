@@ -35,8 +35,97 @@ def chunk_file(file_path: str, chunk_lines: int = DEFAULT_CHUNK_LINES):
         chunks = _ast_chunk_python(code)
         if chunks:
             return chunks
+    elif language == 'javascript':
+        chunks = _ast_chunk_js(code)
+        if chunks:
+            return chunks
+    elif language == 'java':
+        chunks = _ast_chunk_java(code)
+        if chunks:
+            return chunks
 
     return _line_window_chunks(code, chunk_lines)
+
+
+def _ast_chunk_js(code: str):
+    """this will walk the tree-sitter JS AST to extract top-level functions and Express routes."""
+    try:
+        from tree_sitter import Language, Parser as TSParser
+        import tree_sitter_javascript as tsjs
+
+        JS_LANG = Language(tsjs.language())
+        parser = TSParser(JS_LANG)
+        tree = parser.parse(bytes(code, 'utf-8'))
+        root = tree.root_node
+
+        chunks = []
+        lines = code.splitlines()
+
+        for node in root.children:
+            name = None
+            if node.type in ('function_declaration', 'class_declaration'):
+                name_node = node.child_by_field_name('name')
+                name = name_node.text.decode('utf-8') if name_node else node.type
+            elif node.type == 'expression_statement':
+                # Check for Express routes: app.get(), router.post(), etc.
+                call = node.child(0)
+                if call and call.type == 'call_expression':
+                    fn = call.child_by_field_name('function')
+                    if fn and fn.type == 'member_expression':
+                        obj = fn.child_by_field_name('object')
+                        prop = fn.child_by_field_name('property')
+                        if obj and prop:
+                            obj_text = obj.text.decode('utf-8')
+                            prop_text = prop.text.decode('utf-8')
+                            if obj_text in ('app', 'router', 'express') and prop_text in ('get', 'post', 'put', 'delete', 'patch', 'use', 'route'):
+                                # Try to get the route path
+                                args = call.child_by_field_name('arguments')
+                                if args and args.named_child_count > 0:
+                                    path_node = args.named_child(0)
+                                    path = path_node.text.decode('utf-8').strip("'\"")
+                                    name = f"route_{prop_text}_{path}"
+            
+            if name:
+                start = node.start_point[0]
+                end = node.end_point[0]
+                chunk_text = '\n'.join(lines[start:end + 1])
+                chunks.append((name, chunk_text, start))
+
+        return chunks
+    except Exception:
+        return []
+
+
+def _ast_chunk_java(code: str):
+    """this will walk the tree-sitter Java AST to extract method declarations within classes."""
+    try:
+        from tree_sitter import Language, Parser as TSParser
+        import tree_sitter_java as tsjava
+
+        JAVA_LANG = Language(tsjava.language())
+        parser = TSParser(JAVA_LANG)
+        tree = parser.parse(bytes(code, 'utf-8'))
+        root = tree.root_node
+
+        chunks = []
+        lines = code.splitlines()
+
+        def walk(node):
+            if node.type == 'method_declaration':
+                name_node = node.child_by_field_name('name')
+                name = name_node.text.decode('utf-8') if name_node else "method"
+                start = node.start_point[0]
+                end = node.end_point[0]
+                chunk_text = '\n'.join(lines[start:end + 1])
+                chunks.append((name, chunk_text, start))
+            else:
+                for child in node.children:
+                    walk(child)
+
+        walk(root)
+        return chunks
+    except Exception:
+        return []
 
 
 def _ast_chunk_python(code: str):
@@ -135,22 +224,43 @@ def analyze_chunk(chunk_name: str, chunk_text: str, language: str,
     }
 
 
-def meta_summarize(chunk_results: list, inference: InferenceEngine) -> str:
-    """this will combine all per-chunk summaries and run CodeT5 a second time for a whole-file narrative."""
-    parts = []
-    for r in chunk_results:
-        label = risk_label(r['risk_score'])
-        parts.append(
-            f"[{r['name']}] Risk={label}({r['risk_score']}/10): {r['summary']}"
-        )
-
-    combined = " | ".join(parts)
-    meta_prompt = f"The following components are performed in this file: {combined}. Based on these, the main focus of this entire module is to"[:900]
-
+def meta_summarize(chunk_results: list, inference: InferenceEngine, language: str) -> str:
+    """this will combine all per-chunk summaries into a rich prompt and run CodeT5 for a deep report."""
+    total_findings = sum(len(r.get('findings', [])) for r in chunk_results)
+    
+    func_parts = [r['summary'].rstrip('.') for r in chunk_results if r.get('summary') and r['summary'] != "Summary unavailable."]
+    if not func_parts:
+        func_prompt = f"// Language: {language}\n// Module with {total_findings} vulnerabilities.\n"
+    else:
+        func_prompt = f"// Language: {language}\n// This module handles: {', '.join(func_parts)}.\n"
+        
+    func_prompt = func_prompt[:1000]
+    
     try:
-        return inference.generate_summary(meta_prompt, max_length=180)
+        tldr = inference.generate_summary(func_prompt, max_length=128)
     except Exception:
-        return "Meta-summary generation failed."
+        tldr = f"This module implements functional logic in {language}."
+        
+    if not tldr.endswith('.'):
+        tldr += '.'
+        
+    narrative = f"{tldr} "
+    narrative += f"During the chunked analysis, the pipeline partitioned the file into {len(chunk_results)} logical components. "
+    narrative += f"A total of {total_findings} security vulnerabilities were detected across these parts. "
+    
+    risky_chunks = [c for c in chunk_results if c.get('risk_score', 0) >= 4.0]
+    if risky_chunks:
+        risky_names = [c['name'] for c in risky_chunks[:3]]
+        narrative += f"Security attention should be directed towards the more vulnerable segments: {', '.join(risky_names)}. "
+    elif total_findings > 0:
+        narrative += "The vulnerabilities are spread across the file as minor warnings or info-level findings. "
+    else:
+        narrative += "Static analysis verifies that these components are structurally sound with no critical risks identified. "
+        
+    if func_parts:
+        narrative += "Key behaviors encapsulated by these segments include: " + "; ".join(func_parts[:3]) + (" (among others)." if len(func_parts) > 3 else ".")
+        
+    return narrative.strip()
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,7 +308,7 @@ def run_big(file_path: str, inference: InferenceEngine,
     print(f"  {'-'*56}")
     print(f"  META-TRANSFORMER -- Whole-File Report")
     print(f"  {'-'*56}")
-    meta = meta_summarize(chunk_results, inference)
+    meta = meta_summarize(chunk_results, inference, language)
     print(f"  {meta}")
 
     top_score = max(r['risk_score'] for r in chunk_results) if chunk_results else 0.0

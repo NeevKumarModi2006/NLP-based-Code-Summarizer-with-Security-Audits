@@ -79,7 +79,7 @@ def bulk_semgrep_scan(dir_path: str) -> dict:
             env['PATH'] = user_scripts + os.pathsep + env.get('PATH', '')
 
         cmd = f'semgrep scan --config "{config}" --json --quiet "{dir_path}"'
-        result = subprocess.run(cmd, capture_output=True, text=True, env=env, shell=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env, shell=True, encoding='utf-8', errors='ignore')
 
         if result.stdout:
             raw = result.stdout.strip()
@@ -173,8 +173,8 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
         try:
             from main_big import chunk_file, analyze_chunk, meta_summarize
             chunks = chunk_file(file_path)
-            chunk_results = [analyze_chunk(n, t, language, inference) for n, t in chunks]
-            summary = meta_summarize(chunk_results, inference)
+            chunk_results = [analyze_chunk(n, t, language, inference, s) for n, t, s in chunks]
+            summary = meta_summarize(chunk_results, inference, language)
             # Merge any additional findings from chunk analyses
             for cr in chunk_results:
                 for cf in cr.get('findings', []):
