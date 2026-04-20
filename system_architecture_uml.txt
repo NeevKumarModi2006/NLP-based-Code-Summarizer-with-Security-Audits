@@ -1,0 +1,90 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam roundcorner 10
+skinparam padding 8
+skinparam DefaultFontName Arial
+skinparam DefaultFontSize 12
+
+title System Architecture Diagram - NLP Code Summarizer & Security Auditor
+
+' Define System Boundaries
+node "Client Tier" {
+    component "Streamlit Web UI\n[Presentation/Dashboard]" as StreamlitUI
+    component "React Analytics Web App\n[Advanced Visualization]" as ReactUI
+}
+
+node "Application Tier (Orchestration)" {
+    component "Single File Orchestrator\n(main.py)" as SingleController
+    component "Bulk Folder Orchestrator\n(main_folder.py)" as BulkController
+    component "Large File Orchestrator\n(main_big.py)" as BigController
+}
+
+node "Domain Services Tier (Core Engine)" {
+    package "Static Application Security Testing (SAST)" {
+        component "AST Parser Module" as ASTParser
+        component "Feature Extraction Module" as FeatureExtractor
+        component "Custom Rule Scanner" as CustomScanner
+        component "Semgrep Wrapper" as Semgrep
+    }
+
+    package "AI & Inference Service" {
+        component "Prompt Construction & Enrichment" as PromptEnricher
+        component "LLM Inference Engine" as InferenceEngine
+    }
+
+    package "Result Aggregation" {
+        component "Vulnerability Classifier & Deduplicator" as VulnClassifier
+    }
+}
+
+node "Cross-Cutting Concerns" {
+    component "Energy & Carbon Telemetry\n(psutil, RAPL metrics)" as Telemetry
+}
+
+node "Data & Persistence Layer" {
+    database "Detection Rules Library\n(rules.yaml)" as RulesDB
+    file "Local Storage\n(Codebases & JSON Reports)" as LocalStorage
+}
+
+cloud "External Infrastructure & Models" {
+    component "Large Language Models\n(CodeT5, Meta-Transformer)" as LLM
+}
+
+' Define Structural Relationships (Dependencies, not data flow)
+StreamlitUI -down-> SingleController : Depends on
+StreamlitUI -down-> BulkController : Depends on
+StreamlitUI -down-> BigController : Depends on
+
+ReactUI -down-> LocalStorage : Reads metrics from
+
+SingleController -down-> ASTParser : Uses
+SingleController -down-> InferenceEngine : Uses
+SingleController -down-> VulnClassifier : Uses
+
+BulkController -down-> Semgrep : Shell execution
+BulkController -down-> InferenceEngine : Uses
+BulkController -down-> VulnClassifier : Uses
+
+BigController -down-> ASTParser : Uses (Chunking)
+BigController -down-> InferenceEngine : Uses (Map-Reduce)
+BigController -down-> VulnClassifier : Uses
+
+CustomScanner -right-> RulesDB : Configured by
+Extractor -up-> ASTParser : Extends
+CustomScanner -up-> FeatureExtractor : Composes
+
+InferenceEngine -right-> PromptEnricher : Composes
+InferenceEngine -down-> LLM : HTTP/API calls or Local Exec
+
+VulnClassifier -up-> CustomScanner : Aggregates from
+VulnClassifier -up-> Semgrep : Aggregates from
+VulnClassifier -up-> InferenceEngine : Aggregates from
+
+' Telemetry intercepts
+Telemetry -up-> SingleController : Wraps execution
+Telemetry -up-> BulkController : Wraps execution
+Telemetry -up-> BigController : Wraps execution
+Telemetry -down-> LocalStorage : Writes footprints
+
+@enduml

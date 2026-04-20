@@ -4,15 +4,20 @@ import sys
 import subprocess
 import json
 import logging
+import time
+import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 
 from src.ast_parser import ASTParser
 from src.feature_extractor import FeatureExtractor
 from src.scanner import Scanner
 from src.enrichment import PromptEnricher
 from src.inference import InferenceEngine
+from src.vuln_classifier import (
+    classify_vulnerability, normalize_severity, deduplicate_findings,
+    format_vuln_table, vuln_type_summary, extract_snippet, clear_file_cache,
+)
 
 
 LANG_MAP = {'.py': 'python', '.java': 'java', '.js': 'javascript', '.c': 'c'}
@@ -45,6 +50,19 @@ SKIP_DIRS = {
 
 logging.basicConfig(level=logging.WARNING)
 log = logging.getLogger(__name__)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Thread-safe printing
+# ──────────────────────────────────────────────────────────────────────────────
+
+_print_lock = threading.Lock()
+
+
+def safe_print(*args, **kwargs):
+    """Thread-safe wrapper around print()."""
+    with _print_lock:
+        print(*args, **kwargs)
 
 
 def risk_label(score: float) -> str:
@@ -112,8 +130,8 @@ def _calculate_risk_score(findings: list, file_path: str) -> float:
     """Simple severity-weighted score, capped at 10.0."""
     if not findings:
         return 0.0
-    weights = {'ERROR': 3.0, 'WARNING': 2.0, 'INFO': 0.5}
-    total = sum(weights.get(f.get('severity', 'INFO').upper(), 0.5) for f in findings)
+    weights = {'HIGH': 3.0, 'MEDIUM': 2.0, 'LOW': 0.5}
+    total = sum(weights.get(normalize_severity(f.get('severity', 'INFO')).upper(), 0.5) for f in findings)
     import math
     try:
         line_count = sum(1 for _ in open(file_path, 'r', encoding='utf-8', errors='ignore'))
@@ -172,15 +190,44 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
         # Big-file path: import lazily to avoid circular deps at module load time
         try:
             from main_big import chunk_file, analyze_chunk, meta_summarize
+            from main_big import safe_print as big_safe_print
+
             chunks = chunk_file(file_path)
-            chunk_results = [analyze_chunk(n, t, language, inference, s) for n, t, s in chunks]
+
+            # Parallel chunk processing (4 threads) with error isolation
+            chunk_results = [None] * len(chunks)
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_idx = {
+                    executor.submit(
+                        analyze_chunk, n, t, language, inference, s,
+                        file_path, idx   # original_file + chunk_id
+                    ): idx
+                    for idx, (n, t, s) in enumerate(chunks)
+                }
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    try:
+                        chunk_results[idx] = future.result(timeout=120)
+                    except Exception as e:
+                        chunk_results[idx] = {
+                            'name': f'chunk_{idx}',
+                            'summary': f'Chunk analysis failed: {e}',
+                            'risk_score': 0.0,
+                            'findings': [],
+                            'features': {},
+                        }
+
+            # Filter out None entries (shouldn't happen but be safe)
+            chunk_results = [cr for cr in chunk_results if cr is not None]
+
             summary = meta_summarize(chunk_results, inference, language)
             # Merge any additional findings from chunk analyses
             for cr in chunk_results:
                 for cf in cr.get('findings', []):
                     if cf not in findings:
                         findings.append(cf)
-            # Re-score with merged findings
+            # Deduplicate and re-score with merged findings
+            findings = deduplicate_findings(findings)
             risk_score = _calculate_risk_score(findings, file_path)
         except Exception as e:
             log.warning(f"Big-file pipeline failed for {fname}, falling back to single-pass: {e}")
@@ -213,22 +260,37 @@ def analyze_single_file(file_path: str, semgrep_findings: list,
     }
 
 
-# Thread-safe print lock
-_print_lock = threading.Lock()
-
-
 def _scan_one(fp: str, dir_path: str, findings: list,
               inference: InferenceEngine):
-    """Worker: analyze one file and return its result. Thread-safe."""
+    """Worker: analyze one file and return its result. Thread-safe + error-isolated."""
     rel = os.path.relpath(fp, dir_path)
-    result = analyze_single_file(fp, findings, inference)
+    t0 = time.time()
+
+    try:
+        result = analyze_single_file(fp, findings, inference)
+    except Exception as e:
+        result = {
+            'file': fp,
+            'error': f'Worker exception: {e}',
+        }
+
+    elapsed = time.time() - t0
+
     if result is None:
-        with _print_lock:
-            print(f"  Skipped  : {rel} [unsupported]")
+        safe_print(f"  Skipped  : {rel} [unsupported]")
         return None
+
+    if 'error' in result:
+        safe_print(f"  Error    : {rel} — {result['error']}")
+        return result
+
     score = result.get('risk_score', 0.0)
-    with _print_lock:
-        print(f"  Scanned  : {rel} ... [{risk_label(score)} {score}/10]")
+    n_findings = len(result.get('findings', []))
+    safe_print(
+        f"  Scanned  : {rel} ... "
+        f"[{risk_label(score)} {score}/10]  "
+        f"{n_findings} finding(s)  {elapsed:.1f}s"
+    )
     return result
 
 
@@ -263,6 +325,9 @@ def analyze_all_files(dir_path: str, semgrep_map: dict,
     print(f"  Found {len(jobs)} file(s). Scanning with {max_workers} parallel workers...\n")
 
     results = []
+    completed = 0
+    total = len(jobs)
+
     # Submit all jobs in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
@@ -270,7 +335,19 @@ def analyze_all_files(dir_path: str, semgrep_map: dict,
             for fp, findings in jobs
         }
         for future in as_completed(futures):
-            result = future.result()
+            fp = futures[future]
+            # Executor-level error isolation
+            try:
+                result = future.result(timeout=300)
+            except Exception as e:
+                result = {
+                    'file': fp,
+                    'error': f'Executor failure: {e}',
+                }
+            completed += 1
+            pct = (completed / total) * 100 if total else 100
+            safe_print(f"  [{completed}/{total}] ({pct:.0f}%) files processed")
+
             if result is not None:
                 results.append(result)
 
@@ -327,8 +404,9 @@ def build_project_map(results: list, dir_path: str,
     - Project Overview (meta-summary)
     - Stats & severity breakdown
     - Top-5 riskiest files
+    - Most common vulnerability types
     - Cross-file vulnerability patterns
-    - Per-file AI summaries (alphabetical)
+    - Per-file AI summaries with vulnerability detail (alphabetical)
     """
     lines = []
     sep = "=" * 65
@@ -356,26 +434,29 @@ def build_project_map(results: list, dir_path: str,
         lines.append(ov_line)
 
     # ── STATS ────────────────────────────────────────────────────
-    total_counts = {'ERROR': 0, 'WARNING': 0, 'INFO': 0}
+    total_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
     check_id_files = defaultdict(list)
+    all_findings_global = []
 
+    from src.vuln_classifier import normalize_severity
     for r in good:
         for f in r.get('findings', []):
-            sev = f.get('severity', 'INFO').upper()
+            sev = normalize_severity(f.get('severity', 'INFO')).upper()
             total_counts[sev] = total_counts.get(sev, 0) + 1
             cid = f.get('check_id', 'unknown')
             rel = os.path.relpath(r['file'], dir_path)
             if rel not in check_id_files[cid]:
                 check_id_files[cid].append(rel)
+            all_findings_global.append(f)
 
     total_issues = sum(total_counts.values())
     lines.append(f"\n  {'─'*63}")
     lines.append("  SECURITY STATS")
     lines.append(f"  {'─'*63}")
     lines.append(f"  Total Issues : {total_issues}")
-    lines.append(f"    ERROR   (High)   : {total_counts.get('ERROR', 0)}")
-    lines.append(f"    WARNING (Medium) : {total_counts.get('WARNING', 0)}")
-    lines.append(f"    INFO    (Low)    : {total_counts.get('INFO', 0)}")
+    lines.append(f"    High Vulnerability   : {total_counts.get('HIGH', 0)}")
+    lines.append(f"    Medium Vulnerability : {total_counts.get('MEDIUM', 0)}")
+    lines.append(f"    Low Vulnerability    : {total_counts.get('LOW', 0)}")
 
     # ── TOP RISKIEST FILES ───────────────────────────────────────
     ranked_risk = sorted(good, key=lambda r: r['risk_score'], reverse=True)
@@ -388,6 +469,15 @@ def build_project_map(results: list, dir_path: str,
         n = len(r.get('findings', []))
         lines.append(f"  [{label:8s}] {r['risk_score']:4.1f}/10  {rel}  ({n} finding(s))")
 
+    # ── MOST COMMON VULNERABILITY TYPES ──────────────────────────
+    type_counts = vuln_type_summary(all_findings_global)
+    if type_counts:
+        lines.append(f"\n  {'─'*63}")
+        lines.append("  MOST COMMON VULNERABILITY TYPES")
+        lines.append(f"  {'─'*63}")
+        for rank, (category, count) in enumerate(type_counts[:10], 1):
+            lines.append(f"  {rank}. {category:<28s} — {count} occurrence(s)")
+
     # ── CROSS-FILE PATTERNS ──────────────────────────────────────
     cross = {cid: fps for cid, fps in check_id_files.items() if len(fps) >= 2}
     if cross:
@@ -399,7 +489,7 @@ def build_project_map(results: list, dir_path: str,
             for fp in fps:
                 lines.append(f"     → {fp}")
 
-    # ── PER-FILE AI SUMMARIES (alphabetical) ────────────────────
+    # ── PER-FILE AI SUMMARIES + VULNERABILITY DETAIL ─────────────
     sorted_alpha = sorted(good, key=lambda r: r['file'])
     lines.append(f"\n  {'─'*63}")
     lines.append("  PER-FILE AI SUMMARIES")
@@ -408,9 +498,20 @@ def build_project_map(results: list, dir_path: str,
         rel = os.path.relpath(r['file'], dir_path)
         label = risk_label(r['risk_score'])
         summary = r.get('summary', 'N/A').strip()
+        file_findings = r.get('findings', [])
+        big_tag = "  [BIG-FILE]" if r.get('big_file', False) else ""
+
         lines.append(f"")
-        lines.append(f"  {rel}  [{label}  {r['risk_score']}/10]")
+        lines.append(f"  {rel}  [{label}  {r['risk_score']}/10]{big_tag}")
         lines.append(f"  {summary}")
+
+        # Per-file vulnerability detail table
+        if file_findings:
+            lines.append(f"    Vulnerabilities ({len(file_findings)}):")
+            vuln_table = format_vuln_table(
+                file_findings, r['file'], indent='    ', show_snippet=False
+            )
+            lines.append(vuln_table)
 
     # ── FILES WITH ERRORS ────────────────────────────────────────
     if errored:
@@ -448,6 +549,9 @@ if __name__ == "__main__":
 
     dir_path = os.path.realpath(args.dir)
 
+    # Clear cached file contents from any previous run
+    clear_file_cache()
+
     print("[*] Loading CodeT5 model...")
     inference = InferenceEngine()
     print("[*] Model loaded.\n")
@@ -478,4 +582,3 @@ if __name__ == "__main__":
         with open(args.output, 'w', encoding='utf-8') as out:
             out.write(project_map)
         print(f"[*] Project map saved to: {args.output}")
-

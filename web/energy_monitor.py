@@ -74,6 +74,7 @@ class EnergyReport:
     peak_memory_mb: float
     avg_cpu_percent: float
     estimated_energy_j: float
+    estimated_carbon_gco2: float
     rapl_supported: bool
     readings: List[EnergyReading] = field(default_factory=list)
     phase_timings: Dict[str, float] = field(default_factory=dict)
@@ -106,6 +107,7 @@ class EnergyReport:
             "peak_memory_mb": self.peak_memory_mb,
             "avg_cpu_percent": self.avg_cpu_percent,
             "estimated_energy_j": self.estimated_energy_j,
+            "estimated_carbon_gco2": getattr(self, "estimated_carbon_gco2", 0.0),
             "rapl_supported": self.rapl_supported,
             "phase_timings": self.phase_timings,
             "readings": [
@@ -225,12 +227,17 @@ class EnergyCollector:
                 wall_time_s=wall_time_s,
             )
 
+        # Calculate estimated carbon emissions (approx global avg 475 gCO2eq/kWh)
+        energy_kwh = estimated_energy_j / 3_600_000.0
+        estimated_carbon_gco2 = energy_kwh * 475.0
+
         self.report = EnergyReport(
             wall_time_s=wall_time_s,
             cpu_time_s=cpu_time_s,
             peak_memory_mb=peak_memory_mb,
             avg_cpu_percent=avg_cpu,
             estimated_energy_j=estimated_energy_j,
+            estimated_carbon_gco2=estimated_carbon_gco2,
             rapl_supported=rapl_supported,
             readings=readings_snapshot,
             phase_timings=dict(self._phase_timings),
@@ -291,12 +298,11 @@ class EnergyCollector:
         wall_time_s: float,
     ) -> float:
         """this will estimate energy consumption in joules using a TDP-based model."""
-        if wall_time_s == 0:
+        if cpu_time_s == 0:
             return 0.0
             
-        util_fraction = min(max(avg_cpu_percent, 0.0) / 100.0, 1.0)
-        active_power_w = self._tdp * util_fraction
-        energy_j = active_power_w * wall_time_s
+        util_fraction = max(avg_cpu_percent / 100.0, 0.01)
+        energy_j = self._tdp * util_fraction * cpu_time_s
         
         return energy_j
 

@@ -1,0 +1,94 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam roundcorner 10
+skinparam padding 4
+skinparam DefaultFontName Arial
+skinparam DefaultFontSize 12
+
+title NLP-based Code Summarizer with Security Audits - Architecture & Data Flow 
+
+actor "Developer / Security Engineer" as User
+
+package "Presentation Layer (Web)" {
+    [Streamlit Dashboard\n(web/app.py)] as UI_Streamlit
+    [React Advanced Analytics\n(web/frontend/src/)] as UI_React
+}
+
+package "Orchestration & Controllers" {
+    [Single File Analysis\n(main.py)] as Orchestrator_Single
+    [Bulk Directory Scan\n(main_folder.py)] as Orchestrator_Bulk
+    [Big File & Chunking\n(main_big.py)] as Orchestrator_Big
+}
+
+package "Performance & Telemetry" {
+    [Energy & Carbon Monitor\n(web/energy_monitor.py)] as Monitor
+}
+
+package "Core Static Analysis Component (src/)" {
+    [AST Parser\n(ast_parser.py)] as AST
+    [Feature Extractor\n(feature_extractor.py)] as Extractor
+    [Rule-based Scanner\n(scanner.py)] as Scanner
+    database "Vulnerability Rules\n(rules.yaml)" as Rules
+    [Semgrep Bulk Scanner\n(Subprocess)] as Semgrep
+}
+
+package "AI & NLP Engine Component (src/)" {
+    [Inference Engine\n(inference.py)] as Inference
+    [Prompt Enricher\n(enrichment.py)] as Enricher
+    cloud "CodeT5 / Meta-Transformer\n(Pre-trained Language Models)" as Models
+}
+
+package "Post-Processing Component (src/)" {
+    [Vulnerability Classifier\n(vuln_classifier.py)] as Classifier
+}
+
+' Data Storage & Output Artifacts
+database "JSON/TXT Output Artifacts\n(demo_results, latest_report.json)" as Artifacts
+
+' Initial Triggers
+User --> UI_Streamlit : [Upload Code / Directory Path]
+User --> UI_React : [View Energy & Metrics Dashboard]
+
+' Orchestration Routing
+UI_Streamlit --> Orchestrator_Single : [File Content, Language]\n-> Triggers pipeline
+UI_Streamlit --> Orchestrator_Bulk : [Folder Path]\n-> Triggers Bulk Scan
+UI_Streamlit --> Orchestrator_Big : [File Content]\n-> Triggers MapReduce / Chunking
+
+' Hooks into Performance
+Orchestrator_Single -left-> Monitor : execution profile
+Orchestrator_Bulk -left-> Monitor : execution profile
+Orchestrator_Big -left-> Monitor : execution profile
+Monitor -down-> Artifacts : [EnergyReport JSON]\n(Joules, Carbon, CPU time)
+Artifacts .up.> UI_React : [Reads latest_report.json]
+
+' Semgrep specific to Folder
+Orchestrator_Bulk --> Semgrep : [Directory Path]\n-> Returns Subprocess Findings 
+
+' AST Pipeline (Data Flow)
+Orchestrator_Single --> AST : [Raw Code]\n-> Returns AST
+Orchestrator_Bulk --> AST : [File Code]\n-> Returns AST
+Orchestrator_Big --> AST : [Chunk Code]\n-> Returns AST
+
+AST --> Extractor : [AST Nodes, Code]\n-> Returns Sources, Sinks, Complexity
+Extractor --> Scanner : [AST Features, Raw Code]\n-> Runs Regex/Tree-sitter rules
+Scanner -right-> Rules : [Reads detection signatures]
+
+' AI Pipeline (Data Flow)
+Orchestrator_Single --> Inference : [Code, AST Features]\n-> Requests AI Summary
+Orchestrator_Bulk --> Inference : [Code, Aggregated Map]\n-> Requests Project Map Summary
+Orchestrator_Big --> Inference : [Chunk Text / Consolidations]\n-> Requests Meta-Summary
+
+Inference --> Enricher : [Code, Static Findings]\n-> Builds context-rich prompts
+Inference -right-> Models : [Enriched Prompt Text]\n-> Returns Generated Report/Summary
+
+' Consolidation & Post-Processing
+Scanner --> Classifier : [Static Vulnerabilities Map]
+Inference --> Classifier : [Logical / AI-inferred Vulnerabilities]
+Semgrep --> Classifier : [SAST Vulnerabilities]
+Classifier --> Classifier : Deduplicates & Normalizes Severities\n(HIGH/MEDIUM/LOW) & Calculates Risk (0-10)
+
+' Final Returns to UI
+Classifier --> UI_Streamlit : [Structured Dict / JSON]\n(Findings, Risk Score, AI Summary)
+
+@enduml

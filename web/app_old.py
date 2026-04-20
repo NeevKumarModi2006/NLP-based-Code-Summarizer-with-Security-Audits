@@ -34,20 +34,19 @@ st.markdown(
 st.markdown("""
 <style>
 :root {
-    --bg-primary: #FFFFFF;
-    --bg-card: #FFFFFF;
-    --bg-panel: #F8FAFC;
-    --accent: #3B82F6;
-    --accent-dim: #EFF6FF;
-    --accent-border: #BFDBFE;
-    --text-primary: #0F172A;
-    --text-muted: #64748B;
-    --border: #E2E8F0;
-    --radius: 0.5rem;
+    --bg-primary: oklch(1 0 0);
+    --bg-card: oklch(1 0 0);
+    --bg-panel: oklch(0.97 0 0);
+    --accent: oklch(0.205 0 0);
+    --accent-dim: oklch(0.95 0 0);
+    --accent-border: oklch(0.9 0 0);
+    --text-primary: oklch(0.145 0 0);
+    --text-muted: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+    --radius: 0.625rem;
     --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --destructive: #EF4444;
-    --warning: #F59E0B;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --destructive: oklch(0.577 0.245 27.325);
 }
 
 html, body, [class*="css"] {
@@ -156,9 +155,9 @@ section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
     background: var(--bg-card);
     border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
 }
-.finding-HIGH   { border-left-color: var(--destructive); }
-.finding-MEDIUM { border-left-color: var(--warning); }
-.finding-LOW    { border-left-color: var(--accent); }
+.finding-ERROR   { border-left-color: var(--destructive); }
+.finding-WARNING { border-left-color: oklch(0.7 0.15 70); }
+.finding-INFO    { border-left-color: var(--accent); }
 .finding-header  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 .finding-msg  { font-size: 0.9rem; color: var(--text-primary); }
 .finding-line { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); }
@@ -169,7 +168,7 @@ section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
     color: var(--text-primary); border-radius: 6px; padding: 3px 10px;
     font-size: 0.78rem; font-family: var(--font-mono);
 }
-.tag.sink { border-color: var(--destructive); color: var(--destructive); background: #FEF2F2; }
+.tag.sink { border-color: var(--destructive); color: var(--destructive); background: oklch(0.97 0 0); }
 .tag.none { color: var(--text-muted); opacity: 0.7; }
 
 .section-header {
@@ -199,11 +198,15 @@ section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
 .step-run  .step-status { color: var(--accent); }
 .step-wait .step-status { color: var(--text-muted); }
 
-
+[data-testid="stFileUploader"] {
+    background: var(--bg-panel) !important;
+    border: 2px dashed var(--border) !important;
+    border-radius: var(--radius) !important;
+}
 
 [data-testid="stBaseButton-primary"] button {
     background: var(--accent) !important;
-    color: #FFFFFF !important; 
+    color: oklch(1 0 0) !important; 
     font-weight: 600 !important;
     border: none !important; 
     border-radius: var(--radius) !important;
@@ -255,127 +258,8 @@ details summary, details summary p, [data-testid="stExpander"] details summary p
     border-radius: 6px 6px 0 0 !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   FIX: Force dark text on ALL Streamlit default widgets
-   (prevents white-on-white invisible text)
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Removed aggressively global text catch-all to prevent breaking native component styling */
-.stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li,
-.stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
-    color: var(--text-primary) !important;
-}
-
-/* Spinner text */
-[data-testid="stSpinner"], [data-testid="stSpinner"] > div,
-[data-testid="stSpinner"] span, [data-testid="stSpinner"] p,
-.stSpinner, .stSpinner > div, .stSpinner span {
-    color: var(--text-primary) !important;
-}
-
-/* Progress bar label text */
-[data-testid="stProgress"] p,
-[data-testid="stProgress"] span,
-[data-testid="stProgress"] div,
-[data-testid="stProgressBar"] ~ div {
-    color: var(--text-primary) !important;
-}
-
-/* Alert boxes (st.error, st.warning, st.info, st.success) */
-[data-testid="stAlert"], [data-testid="stAlert"] p,
-[data-testid="stAlert"] span, [data-testid="stAlert"] div,
-[data-testid="stNotification"], [data-testid="stNotification"] p,
-[role="alert"], [role="alert"] p, [role="alert"] span,
-.stAlert, .stAlert p, .stAlert div {
-    color: var(--text-primary) !important;
-}
-
-/* Text input */
-[data-testid="stTextInput"] label,
-[data-testid="stTextInput"] input,
-[data-testid="stTextInput"] p,
-[data-testid="stTextInput"] span,
-.stTextInput label, .stTextInput input {
-    color: var(--text-primary) !important;
-}
-[data-testid="stTextInput"] input {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-}
-
-/* File uploader text fixes */
-[data-testid="stFileUploader"] * {
-    color: #FFFFFF !important;
-}
-
-/* Tabs text (belt-and-suspenders on top of existing rules) */
-[data-testid="stTabs"] span, [data-testid="stTabs"] p {
-    color: var(--text-primary) !important;
-}
-
-/* Toast / notifications */
-[data-testid="stToast"], [data-testid="stToast"] p,
-[data-testid="stToast"] span {
-    color: var(--text-primary) !important;
-}
-
-/* Status widget */
-[data-testid="stStatusWidget"] span,
-[data-testid="stStatusWidget"] div {
-    color: var(--text-primary) !important;
-}
-
-/* Expander content text */
-[data-testid="stExpander"] p,
-[data-testid="stExpander"] span,
-[data-testid="stExpander"] div,
-[data-testid="stExpander"] li {
-    color: var(--text-primary) !important;
-}
-
-/* Button text readability */
-[data-testid="stBaseButton-secondary"] span,
-[data-testid="stBaseButton-primary"] span {
-    color: inherit !important;
-}
-
-/* Metric widget (built-in st.metric) */
-[data-testid="stMetric"] label,
-[data-testid="stMetric"] div,
-[data-testid="stMetricValue"] {
-    color: var(--text-primary) !important;
-}
-
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding-top: 2rem !important; max-width: 1400px !important; }
-
-[data-testid="stFileUploader"] {
-    background: transparent !important;
-    border: 2px dashed var(--border) !important;
-    border-radius: var(--radius) !important;
-}
-
-[data-testid="stFileUploader"] {
-    background-color: #262730 !important;
-}
-
-[data-testid="stFileUploader"] * {
-    color: #FFFFFF !important;
-}
-
-[data-testid="stFileUploadDropzone"] {
-    background-color: #262730 !important;
-}
-
-[data-testid="stFileUploadDropzone"] * {
-    color: #FFFFFF !important;
-}
-
-[data-testid="stBaseButton-secondary"] button {
-    color: #FFFFFF !important;
-    border-color: #4A5568 !important;
-    background-color: #262730 !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -386,9 +270,9 @@ def load_inference_engine():
 
 def risk_color(score: float) -> str:
     if score >= 8: return "var(--destructive)"
-    if score >= 5: return "var(--warning)"
-    if score >= 2: return "var(--accent)"
-    return "var(--text-muted)"
+    if score >= 5: return "oklch(0.7 0.15 70)"
+    if score >= 2: return "oklch(0.8 0.15 90)"
+    return "oklch(0.6 0.15 150)"
 
 def risk_label(score: float) -> str:
     if score >= 8:  return "CRITICAL"
@@ -398,9 +282,9 @@ def risk_label(score: float) -> str:
 
 def severity_icon_html(sev: str) -> str:
     icons = {
-        "HIGH":   '<i class="ti ti-circle-x"></i>',
-        "MEDIUM": '<i class="ti ti-alert-triangle"></i>',
-        "LOW":    '<i class="ti ti-info-circle"></i>',
+        "ERROR":   '<i class="ti ti-circle-x"></i>',
+        "WARNING": '<i class="ti ti-alert-triangle"></i>',
+        "INFO":    '<i class="ti ti-info-circle"></i>',
     }
     return icons.get(sev.upper(), '<i class="ti ti-circle"></i>')
 
@@ -415,27 +299,26 @@ def render_gauge(score: float):
         <div class="gauge-score" style="color:{color};">{score}<span style="font-size:1.5rem;color:var(--text-muted);opacity:0.6;">/10</span></div>
         <div style="font-size:0.8rem;font-weight:700;letter-spacing:2px;color:{color};margin-top:4px;">{label}</div>
         <div class="gauge-bar-bg">
-            <div class="gauge-bar-fill" style="width:{pct}%;background-color:{color};"></div>
+            <div class="gauge-bar-fill" style="width:{pct}%;background:{color};"></div>
         </div>
         <div class="gauge-range">0 -- Safe &nbsp;&nbsp;&nbsp; 10 -- Critical</div>
     </div>""", unsafe_allow_html=True)
 
 
 def render_finding(f: dict):
-    from src.vuln_classifier import normalize_severity
-    sev   = normalize_severity(f.get('severity', 'INFO')).upper()
+    sev   = f.get('severity', 'INFO').upper()
     msg   = f.get('message', '')
     line  = f.get('line', '?')
     icon  = severity_icon_html(sev)
     
     hdr_color = "var(--text-primary)"
-    if sev == "HIGH": hdr_color = "var(--destructive)"
-    elif sev == "MEDIUM": hdr_color = "var(--warning)"
+    if sev == "ERROR": hdr_color = "var(--destructive)"
+    elif sev == "WARNING": hdr_color = "oklch(0.7 0.15 70)"
     else: hdr_color = "var(--accent)"
 
     st.markdown(f"""
     <div class="finding-card finding-{sev}">
-        <div class="finding-header" style="color:{hdr_color};">{icon} {sev} VULNERABILITY</div>
+        <div class="finding-header" style="color:{hdr_color};">{icon} {sev}</div>
         <div class="finding-msg">{msg}</div>
         <div class="finding-line"><i class="ti ti-code" style="margin-right:4px;"></i>Line {line}</div>
     </div>""", unsafe_allow_html=True)
@@ -478,11 +361,6 @@ with st.sidebar:
     <div class="sb-section-title">Scanner</div>
     <div style="font-size:0.83rem;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
         <i class="ti ti-shield-check" style="color:var(--accent);"></i> Semgrep + AST/Regex Fallback
-    </div>
-    
-    <div class="sb-section-title">Processing</div>
-    <div style="font-size:0.83rem;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
-        <i class="ti ti-cpu" style="color:var(--accent);"></i> 4 Parallel Threads (Big Files)
     </div>
 
     <div style="margin-top:32px; margin-bottom: 12px;">
@@ -623,26 +501,21 @@ if run_btn or demo_btn:
         <i class="ti ti-chart-bar"></i> Directory Pipeline Results
     </div>''', unsafe_allow_html=True)
     
-    total_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
-    from src.vuln_classifier import normalize_severity
+    total_counts = {'ERROR': 0, 'WARNING': 0, 'INFO': 0}
     for r in results_arr:
         if 'error' in r: continue
         for f in r.get('findings', []):
-            sev = normalize_severity(f.get('severity', 'INFO')).upper()
-            if sev in total_counts:
-                total_counts[sev] += 1
-            else:
-                total_counts['LOW'] += 1
+            total_counts[f.get('severity', 'INFO').upper()] += 1
             
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--text-primary)!important">{len(results_arr)}</div><div class="metric-label">Files Scanned</div></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--destructive)!important">{total_counts['HIGH']}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--destructive)!important">{total_counts['ERROR']}</div><div class="metric-label">Errors</div></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning)!important">{total_counts['MEDIUM']}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:oklch(0.7 0.15 70)!important">{total_counts['WARNING']}</div><div class="metric-label">Warnings</div></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent)!important">{total_counts['LOW']}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent)!important">{total_counts['INFO']}</div><div class="metric-label">Infos</div></div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('''<div class="section-header">
@@ -672,7 +545,7 @@ if run_btn or demo_btn:
     ranked_risk = sorted([r for r in results_arr if 'error' not in r], key=lambda x: x.get('risk_score', 0), reverse=True)
     for r in ranked_risk[:5]:
         rel_path = os.path.relpath(r['file'], dir_path_input)
-        sev = "HIGH" if r.get('risk_score',0) >= 8 else "MEDIUM" if r.get('risk_score',0) >= 5 else "LOW"
+        sev = "ERROR" if r.get('risk_score',0) >= 8 else "WARNING" if r.get('risk_score',0) >= 5 else "INFO"
         st.markdown(f"""
         <div class="finding-card finding-{sev}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -747,43 +620,20 @@ if big_uploaded:
 
     try:
         from main_big import chunk_file, analyze_chunk, meta_summarize
-        from src.vuln_classifier import deduplicate_findings
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        import threading
-
         inference_big = load_inference_engine()
-        _completed_count = [0]  # mutable counter for thread-safe progress
-        _progress_lock = threading.Lock()
 
         with measure_energy(sample_interval_s=0.2) as col_big:
             col_big.begin_phase("Chunking")
             with st.spinner("Chunking file and initialising NLP..."):
                 chunks = chunk_file(big_file_path)
-            col_big.begin_phase("Chunk Analysis (4 threads)")
+            col_big.begin_phase("Chunk Analysis")
 
-            status_ph.markdown(f"<small style='color:var(--text-muted);'>Processing <b style='color:var(--text-primary);'>{len(chunks)} chunks</b> across <b style='color:var(--text-primary);'>4 parallel threads</b>...</small>", unsafe_allow_html=True)
-
-            chunk_results = [None] * len(chunks)
-
-            def _analyze_and_track(idx, cname, ctext, start_line):
-                """Thread worker: analyze one chunk."""
-                return idx, analyze_chunk(cname, ctext, lang_big, inference_big, start_line)
-
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = {
-                    executor.submit(_analyze_and_track, idx, cname, ctext, start_line): (idx, cname)
-                    for idx, (cname, ctext, start_line) in enumerate(chunks)
-                }
-                for future in as_completed(futures):
-                    idx, cname = futures[future]
-                    _, cr = future.result()
-                    chunk_results[idx] = cr
-                    
-                    _completed_count[0] += 1
-                    prog_ph.progress(
-                        _completed_count[0] / len(chunks),
-                        text=f"Chunk {_completed_count[0]}/{len(chunks)} done — {cname}"
-                    )
+            chunk_results = []
+            for idx, (cname, ctext, start_line) in enumerate(chunks):
+                prog_ph.progress((idx) / len(chunks), text=f"Analysing chunk {idx+1}/{len(chunks)}: {cname}")
+                status_ph.markdown(f"<small style='color:var(--text-muted);'>Running: <b style='color:var(--text-primary);'>{cname}</b> ({ctext.count(chr(10))+1} lines)</small>", unsafe_allow_html=True)
+                cr = analyze_chunk(cname, ctext, lang_big, inference_big, start_line)
+                chunk_results.append(cr)
 
             prog_ph.progress(1.0, text="Meta-Transformer pass...")
             col_big.begin_phase("Meta-Transformer")
@@ -807,64 +657,13 @@ if big_uploaded:
         </div>''', unsafe_allow_html=True)
         st.markdown(f'<div class="summary-box">{meta_sum}</div>', unsafe_allow_html=True)
 
-        # ── CONSOLIDATED VULNERABILITIES (sorted by original file line) ──
-        all_findings = []
-        for cr in chunk_results:
-            all_findings.extend(cr.get('findings', []))
-        all_findings = deduplicate_findings(all_findings)
-        all_findings.sort(key=lambda f: f.get('line', 0))
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('''<div class="section-header">
-            <i class="ti ti-alert-triangle"></i> Consolidated Vulnerabilities
-            <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted);margin-left:8px;">(original file line numbers, deduplicated)</span>
-        </div>''', unsafe_allow_html=True)
-
-        if all_findings:
-            # Severity counts
-            sev_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
-            from src.vuln_classifier import normalize_severity
-            for f in all_findings:
-                norm_sev = normalize_severity(f.get('severity', 'INFO')).upper()
-                sev_counts[norm_sev] = sev_counts.get(norm_sev, 0) + 1
-            vc1, vc2, vc3, vc4 = st.columns(4)
-            with vc1:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--text-primary)!important">{len(all_findings)}</div><div class="metric-label">Total</div></div>""", unsafe_allow_html=True)
-            with vc2:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--destructive)!important">{sev_counts.get('HIGH',0)}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
-            with vc3:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning)!important">{sev_counts.get('MEDIUM',0)}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
-            with vc4:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent)!important">{sev_counts.get('LOW',0)}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            for fnd in all_findings:
-                chunk_src = fnd.get('original_chunk', '')
-                chunk_badge = f" <span style='font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono);'>chunk: {chunk_src}</span>" if chunk_src else ""
-                sev = normalize_severity(fnd.get('severity', 'INFO')).upper()
-                icon = severity_icon_html(sev)
-                hdr_color = "var(--destructive)" if sev == "HIGH" else "var(--warning)" if sev == "MEDIUM" else "var(--accent)"
-                st.markdown(f"""
-                <div class="finding-card finding-{sev}">
-                    <div class="finding-header" style="color:{hdr_color};">{icon} {sev} VULNERABILITY{chunk_badge}</div>
-                    <div class="finding-msg">{fnd.get('message', '')}</div>
-                    <div class="finding-line"><i class="ti ti-code" style="margin-right:4px;"></i>Line {fnd.get('line', '?')}</div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            st.markdown("""<div class="finding-card finding-LOW">
-                <div class="finding-header" style="color:var(--text-primary);">
-                    <i class="ti ti-circle-check" style="color:var(--accent);"></i> CLEAN
-                </div>
-                <div class="finding-msg">No vulnerabilities detected across any chunks.</div>
-            </div>""", unsafe_allow_html=True)
-
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('''<div class="section-header">
             <i class="ti ti-layout-list"></i> Per-Chunk Breakdown
         </div>''', unsafe_allow_html=True)
 
         for cr in chunk_results:
-            sev_cls = "HIGH" if cr['risk_score'] >= 7 else "MEDIUM" if cr['risk_score'] >= 4 else "LOW"
+            sev_cls = "ERROR" if cr['risk_score'] >= 7 else "WARNING" if cr['risk_score'] >= 4 else "INFO"
             n_findings = len(cr.get('findings', []))
             with st.expander(f"{cr['name']}   |   Score: {cr['risk_score']}/10   |   {n_findings} finding(s)"):
                 st.markdown(f"<div class='summary-box' style='margin-bottom:12px;'>{cr['summary']}</div>", unsafe_allow_html=True)
@@ -917,7 +716,7 @@ with left:
     fi1, fi2, fi3 = st.columns(3)
     with fi1:
         st.markdown(f"""<div class="metric-card">
-            <div class="metric-value" style="font-size:1.1rem;word-break:break-all;color:black;">{uploaded_file.name}</div>
+            <div class="metric-value" style="font-size:1.1rem;word-break:break-all;">{uploaded_file.name}</div>
             <div class="metric-label"><i class="ti ti-file"></i> File</div></div>""", unsafe_allow_html=True)
     with fi2:
         st.markdown(f"""<div class="metric-card">
@@ -1049,7 +848,7 @@ with right:
             for f in results['findings']:
                 render_finding(f)
         else:
-            st.markdown("""<div class="finding-card finding-LOW">
+            st.markdown("""<div class="finding-card finding-INFO">
                 <div class="finding-header" style="color:var(--text-primary);">
                     <i class="ti ti-circle-check" style="color:var(--accent);"></i> CLEAN
                 </div>

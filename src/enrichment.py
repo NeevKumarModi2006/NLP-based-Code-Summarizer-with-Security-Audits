@@ -11,28 +11,30 @@ class PromptEnricher:
         sources    = list(set(ast_features.get('sources', [])))
         complexity = ast_features.get('complexity', 0)
 
-        sink_str   = ", ".join(sinks)   if sinks   else "none"
-        source_str = ", ".join(sources) if sources else "none"
+        sink_section   = f"sinks={', '.join(sinks)} | " if sinks else ""
+        source_section = f"sources={', '.join(sources)} | " if sources else ""
 
         if not findings:
-            findings_str = "No vulnerabilities detected."
+            # For entirely safe chunks, strip out all prompt attributes except code.
+            # CodeT5 occasionally hallucinates buzzwords (e.g. nagios, malformed)
+            # if we leave empty attribute headers. Giving it only the code forces
+            # it to explain just the function's structural logic.
+            return code_snippet[:PromptEnricher.CODE_CHAR_LIMIT]
         else:
             findings_str = "; ".join(
                 f"{f['severity']} - {f['message']} (line {f['line']})"
                 for f in findings
             )
+            header = (
+                f"/* "
+                f"sinks={', '.join(sinks) if sinks else 'none'} | "
+                f"sources={', '.join(sources) if sources else 'none'} | "
+                f"complexity={complexity} | "
+                f"security_findings={findings_str}"
+                f" */"
+            )
 
         code_truncated = code_snippet[:PromptEnricher.CODE_CHAR_LIMIT]
-
-        header = (
-            f"/* "
-            f"sinks={sink_str} | "
-            f"sources={source_str} | "
-            f"complexity={complexity} | "
-            f"findings={findings_str}"
-            f" */"
-        )
-
         prompt = f"{header}\n{code_truncated}"
 
         return prompt

@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   Zap, Cpu, MemoryStick, Clock, Gauge, Activity,
-  Upload, RefreshCw, CheckCircle, AlertTriangle
+  Upload, RefreshCw, CheckCircle, AlertTriangle, CloudRain
 } from 'lucide-react';
 import './index.css';
 
@@ -21,6 +21,7 @@ const DEMO_REPORT = {
   peak_memory_mb: 52.3,
   avg_cpu_percent: 71.4,
   estimated_energy_j: 3.319,
+  estimated_carbon_gco2: 0.000437,
   rapl_supported: false,
   phase_timings: { spin: 2.001, sleep: 0.502 },
   readings: Array.from({ length: 50 }, (_, i) => ({
@@ -258,6 +259,7 @@ function Dashboard({ report, onReset }) {
     peak_memory_mb,
     avg_cpu_percent,
     estimated_energy_j,
+    estimated_carbon_gco2,
     rapl_supported,
     readings,
     phase_timings,
@@ -292,6 +294,13 @@ function Dashboard({ report, onReset }) {
           value={estimated_energy_j.toFixed(4)}
           unit="J"
           sub={rapl_supported ? 'from RAPL' : 'TDP estimate'}
+        />
+        <StatCard
+          icon={CloudRain}
+          label="Carbon Emission"
+          value={(estimated_carbon_gco2 !== undefined ? estimated_carbon_gco2 : (estimated_energy_j / 3600000.0) * 475.0).toFixed(6)}
+          unit="gCO₂eq"
+          sub="Global avg intensity"
         />
         <StatCard icon={Activity} label="Snapshots" value={readings.length} unit="" />
       </div>
