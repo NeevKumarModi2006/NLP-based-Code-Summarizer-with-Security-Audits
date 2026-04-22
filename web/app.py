@@ -33,349 +33,480 @@ st.markdown(
 
 st.markdown("""
 <style>
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════ */
 :root {
-    --bg-primary: #FFFFFF;
-    --bg-card: #FFFFFF;
-    --bg-panel: #F8FAFC;
-    --accent: #3B82F6;
-    --accent-dim: #EFF6FF;
-    --accent-border: #BFDBFE;
-    --text-primary: #0F172A;
-    --text-muted: #64748B;
-    --border: #E2E8F0;
-    --radius: 0.5rem;
-    --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --destructive: #EF4444;
-    --warning: #F59E0B;
+    --bg:          #F8FAFC;
+    --surface:     #FFFFFF;
+    --border:      #E2E8F0;
+    --border-soft: #F1F5F9;
+
+    --accent:      #3B82F6;
+    --accent-bg:   #EFF6FF;
+    --accent-rim:  #BFDBFE;
+
+    --danger:      #EF4444;
+    --danger-bg:   #FEF2F2;
+    --warning:     #F59E0B;
+    --warning-bg:  #FFFBEB;
+
+    --ink:         #0F172A;
+    --ink-2:       #334155;
+    --ink-muted:   #64748B;
+    --ink-faint:   #94A3B8;
+
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --radius: 8px;
+    --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+    --shadow-md: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
 }
 
-html, body, [class*="css"] {
-    font-family: var(--font-sans) !important;
-    background-color: var(--bg-primary) !important;
-    color: var(--text-primary) !important;
+/* ═══════════════════════════════════════════════════
+   BASE RESETS
+   ═══════════════════════════════════════════════════ */
+html, body { font-family: var(--sans); }
+.stApp    { background-color: var(--bg); }
+.block-container {
+    padding-top: 2rem;
+    max-width: 1400px;
 }
-.stApp { background-color: var(--bg-primary) !important; }
+#MainMenu, footer, header { visibility: hidden; }
 
+/* ═══════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════ */
 section[data-testid="stSidebar"] {
-    background: var(--bg-panel) !important;
-    border-right: 1px solid var(--border) !important;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
 }
-section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
 
-.ti { font-size: 1em; vertical-align: -0.125em; }
-.ti-lg { font-size: 1.4rem; vertical-align: -0.2em; }
-.ti-xl { font-size: 2rem; display: block; margin-bottom: 8px; }
-.ti-hero { font-size: 2.4rem; vertical-align: -0.25em; margin-right: 10px; }
-.ti-step { font-size: 1rem; vertical-align: -0.12em; }
+/* ═══════════════════════════════════════════════════
+   STREAMLIT WIDGET OVERRIDES  (scoped, no !important)
+   ═══════════════════════════════════════════════════ */
 
+/* Text / markdown */
+.stMarkdown p,
+.stMarkdown span,
+.stMarkdown li,
+.stMarkdown h1,
+.stMarkdown h2,
+.stMarkdown h3,
+.stMarkdown h4 { color: var(--ink); }
+
+/* Labels */
+.stTextInput > label > div > p,
+.stSelectbox  > label > div > p { color: var(--ink); }
+
+/* Text input field */
+.stTextInput input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--ink);
+}
+.stTextInput input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    outline: none;
+}
+
+/* Code blocks */
+.stCodeBlock {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+/* Expander */
+details > summary p { color: var(--ink); font-weight: 600; }
+
+/* Tabs */
+[data-testid="stTabs"] [role="tab"] {
+    color: var(--ink-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+    color: var(--ink);
+    border-bottom: 2px solid var(--accent);
+}
+[data-testid="stTabs"] [role="tab"]:hover {
+    color: var(--ink);
+    background: var(--bg);
+    border-radius: 6px 6px 0 0;
+}
+
+/* Buttons — Primary */
+[data-testid="stBaseButton-primary"] button {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.6rem 2rem;
+    transition: background .15s, box-shadow .15s;
+}
+[data-testid="stBaseButton-primary"] button:hover {
+    background: #2563EB;
+    box-shadow: var(--shadow-md);
+}
+
+/* Buttons — Secondary */
+[data-testid="stBaseButton-secondary"] button {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-weight: 600;
+    transition: border-color .15s, background .15s;
+}
+[data-testid="stBaseButton-secondary"] button:hover {
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
+/* Link button */
+[data-testid="stLinkButton"] a {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-weight: 600;
+}
+[data-testid="stLinkButton"] a:hover {
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
+/* Metric widget */
+[data-testid="stMetricValue"] { color: var(--ink); }
+[data-testid="stMetricLabel"] > div > p { color: var(--ink-muted); }
+
+/* Spinner */
+[data-testid="stSpinner"] p { color: var(--ink-muted); }
+
+/* Alerts */
+[data-testid="stAlert"] p { color: var(--ink); }
+
+/* Toast */
+[data-testid="stToast"] p { color: var(--ink); }
+
+/* Progress */
+[data-testid="stProgress"] p { color: var(--ink-muted); }
+
+/* File uploader — keep dark bg for contrast on the drop zone */
+[data-testid="stFileUploadDropzone"] {
+    background: #1E2130;
+    border: 2px dashed #3D4560;
+    border-radius: var(--radius);
+}
+[data-testid="stFileUploadDropzone"] * { color: #CBD5E1; }
+
+[data-testid="stBaseButton-secondary"][data-test-id*="upload"] button,
+[data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"] button {
+    background: #2A2F45;
+    color: #CBD5E1;
+    border-color: #3D4560;
+}
+
+/* ═══════════════════════════════════════════════════
+   SIDEBAR COMPONENTS
+   ═══════════════════════════════════════════════════ */
 .sb-section-title {
-    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 2px; color: var(--text-muted);
-    margin: 18px 0 8px 0; padding-bottom: 6px;
-    border-bottom: 1px solid var(--accent-border);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    margin: 18px 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--accent-rim);
 }
 .sb-lang-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .sb-lang {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; color: var(--text-primary);
-    display: flex; align-items: center; gap: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
-.sb-step-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.83rem; color: var(--text-primary); }
+.sb-step-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 0.83rem;
+    color: var(--ink);
+}
 .sb-step-num {
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--bg-card); border: 1px solid var(--border);
-    color: var(--text-muted); font-size: 0.65rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
-
 .model-pill {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 10px 14px; font-family: var(--font-mono);
-    font-size: 0.77rem; color: var(--text-primary); word-break: break-all;
-    display: flex; align-items: center; gap: 8px; margin: 6px 0 14px 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.77rem;
+    color: var(--ink);
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 14px 0;
 }
-.model-pill .ti { color: var(--text-muted); font-size: 1rem; flex-shrink: 0; }
+.model-pill .ti { color: var(--ink-muted); font-size: 1rem; flex-shrink: 0; }
 
+/* ═══════════════════════════════════════════════════
+   HERO BANNER
+   ═══════════════════════════════════════════════════ */
 .hero-banner {
-    background: var(--bg-card);
-    border: 1px solid var(--accent-border); border-radius: var(--radius);
-    padding: 40px 48px; margin-bottom: 32px;
-    position: relative; overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    background: var(--surface);
+    border: 1px solid var(--accent-rim);
+    border-radius: var(--radius);
+    padding: 40px 48px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
 }
 .hero-banner::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
     background: var(--accent);
 }
 .hero-title {
-    font-size: 2.8rem; font-weight: 900; letter-spacing: -1px;
-    color: var(--text-primary);
-    margin: 0 0 8px 0; display: flex; align-items: center; gap: 14px;
+    font-size: 2.8rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: var(--ink);
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
 }
-.hero-title-icon {
-    color: var(--accent);
-    font-size: 2.4rem;
-}
-.hero-sub { font-size: 1rem; color: var(--text-muted); font-weight: 400; margin: 0; }
+.hero-title-icon { color: var(--accent); font-size: 2.4rem; }
+.hero-sub { font-size: 1rem; color: var(--ink-muted); font-weight: 400; margin: 0; }
 
+/* ═══════════════════════════════════════════════════
+   METRIC CARDS
+   ═══════════════════════════════════════════════════ */
 .metric-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px 24px; text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .15s;
 }
-.metric-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-.metric-value { font-size: 2rem; font-weight: 800; margin: 0; line-height: 1; color: var(--text-primary) !important; }
-.metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
+.metric-card:hover { box-shadow: var(--shadow-md); }
+.metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ink);
+}
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+}
 
+/* ═══════════════════════════════════════════════════
+   FEATURE CARDS (homepage)
+   ═══════════════════════════════════════════════════ */
 .feat-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px 20px; text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s, box-shadow .15s;
 }
-.feat-card:hover { border-color: var(--accent-border); box-shadow: 0 6px 12px rgba(0,0,0,0.05); }
-.feat-icon { font-size: 2rem; margin-bottom: 12px; display: block; color: var(--accent) !important; }
-.feat-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--text-primary); }
-.feat-desc  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+.feat-card:hover {
+    border-color: var(--accent-rim);
+    box-shadow: var(--shadow-md);
+}
+.feat-icon { font-size: 2rem; margin-bottom: 12px; display: block; color: var(--accent); }
+.feat-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--ink); }
+.feat-desc  { font-size: 0.8rem; color: var(--ink-muted); line-height: 1.5; }
 
+/* ═══════════════════════════════════════════════════
+   RISK GAUGE
+   ═══════════════════════════════════════════════════ */
 .gauge-container {
-    background: var(--bg-card); border-radius: var(--radius);
-    border: 1px solid var(--border); padding: 28px;
-    text-align: center; margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 28px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
 }
-.gauge-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
-.gauge-score { font-size: 4rem; font-weight: 900; line-height: 1; font-family: var(--font-mono); }
-.gauge-bar-bg { background: var(--bg-panel); border-radius: 99px; height: 10px; margin: 16px 0 8px 0; overflow: hidden; border: 1px solid var(--border); }
+.gauge-label {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+.gauge-score {
+    font-size: 4rem;
+    font-weight: 900;
+    line-height: 1;
+    font-family: var(--mono);
+}
+.gauge-score-denom {
+    font-size: 1.5rem;
+    color: var(--ink-faint);
+}
+.gauge-bar-bg {
+    background: var(--bg);
+    border-radius: 99px;
+    height: 10px;
+    margin: 16px 0 8px 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
 .gauge-bar-fill { height: 100%; border-radius: 99px; }
-.gauge-range { font-size: 0.75rem; color: var(--text-muted); }
+.gauge-range { font-size: 0.75rem; color: var(--ink-muted); }
 
+/* ═══════════════════════════════════════════════════
+   FINDING CARDS
+   ═══════════════════════════════════════════════════ */
 .finding-card {
-    border-radius: var(--radius); padding: 14px 18px;
-    margin-bottom: 10px; border-left: 4px solid;
-    background: var(--bg-card);
-    border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
 }
-.finding-HIGH   { border-left-color: var(--destructive); }
-.finding-MEDIUM { border-left-color: var(--warning); }
-.finding-LOW    { border-left-color: var(--accent); }
-.finding-header  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-.finding-msg  { font-size: 0.9rem; color: var(--text-primary); }
-.finding-line { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); }
+.finding-HIGH   { border-left-color: var(--danger);  background: var(--danger-bg); }
+.finding-MEDIUM { border-left-color: var(--warning); background: var(--warning-bg); }
+.finding-LOW    { border-left-color: var(--accent);  background: var(--accent-bg); }
 
+.finding-header {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.finding-msg  { font-size: 0.9rem; color: var(--ink); }
+.finding-line {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    font-family: var(--mono);
+}
+
+/* ═══════════════════════════════════════════════════
+   TAGS
+   ═══════════════════════════════════════════════════ */
 .tag-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .tag {
-    background: var(--bg-card); border: 1px solid var(--border);
-    color: var(--text-primary); border-radius: 6px; padding: 3px 10px;
-    font-size: 0.78rem; font-family: var(--font-mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    font-family: var(--mono);
 }
-.tag.sink { border-color: var(--destructive); color: var(--destructive); background: #FEF2F2; }
-.tag.none { color: var(--text-muted); opacity: 0.7; }
+.tag.sink    { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+.tag.none    { color: var(--ink-faint); }
 
+/* ═══════════════════════════════════════════════════
+   SECTION HEADERS
+   ═══════════════════════════════════════════════════ */
 .section-header {
-    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 1.5px; color: var(--text-primary); padding: 0 0 8px 0;
-    border-bottom: 2px solid var(--border); margin-bottom: 16px;
-    display: flex; align-items: center; gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--ink);
+    padding: 0 0 8px 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .section-header i { color: var(--accent); }
 
+/* ═══════════════════════════════════════════════════
+   SUMMARY BOX
+   ═══════════════════════════════════════════════════ */
 .summary-box {
-    background: var(--bg-card);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px 24px;
-    font-size: 0.96rem; line-height: 1.7; color: var(--text-primary);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    font-size: 0.96rem;
+    line-height: 1.7;
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
 }
 
+/* ═══════════════════════════════════════════════════
+   PIPELINE STEPS
+   ═══════════════════════════════════════════════════ */
 .pipeline-step {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; background: var(--bg-card);
-    border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; border: 1px solid var(--border);
-    color: var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    color: var(--ink);
 }
-.step-status { margin-left: auto; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.step-status {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
 .step-done .step-status { color: var(--accent); }
 .step-run  .step-status { color: var(--accent); }
-.step-wait .step-status { color: var(--text-muted); }
+.step-wait .step-status { color: var(--ink-faint); }
 
-
-
-[data-testid="stBaseButton-primary"] button {
-    background: var(--accent) !important;
-    color: #FFFFFF !important; 
-    font-weight: 600 !important;
-    border: none !important; 
-    border-radius: var(--radius) !important;
-    padding: 0.6rem 2rem !important; 
-}
-[data-testid="stBaseButton-primary"] button:hover {
-    background: var(--text-primary) !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
-}
-
-[data-testid="stBaseButton-secondary"] button, [data-testid="stLinkButton"] a {
-    background: var(--bg-card) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius) !important;
-    font-weight: 600 !important;
-}
-[data-testid="stBaseButton-secondary"] button:hover, [data-testid="stLinkButton"] a:hover {
-    background: var(--bg-panel) !important;
-    border-color: var(--accent) !important;
-}
-
-.stCodeBlock { border-radius: var(--radius) !important; border: 1px solid var(--border) !important; }
-
-details summary, details summary p, [data-testid="stExpander"] details summary p {
-    color: var(--text-primary) !important;
-    font-weight: 700 !important;
-}
-
-[data-testid="stTabs"] [role="tab"] {
-    color: var(--text-primary) !important;
-    opacity: 1 !important;
-    font-weight: 600 !important;
-    font-size: 0.9rem !important;
-}
-[data-testid="stTabs"] [role="tab"][aria-selected="false"] {
-    color: var(--text-muted) !important;
-    opacity: 1 !important;
-}
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: var(--text-primary) !important;
-    border-bottom: 2px solid var(--accent) !important;
-    opacity: 1 !important;
-}
-[data-testid="stTabs"] [role="tab"]:hover {
-    color: var(--text-primary) !important;
-    opacity: 1 !important;
-    background: var(--bg-panel) !important;
-    border-radius: 6px 6px 0 0 !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FIX: Force dark text on ALL Streamlit default widgets
-   (prevents white-on-white invisible text)
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Removed aggressively global text catch-all to prevent breaking native component styling */
-.stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown li,
-.stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
-    color: var(--text-primary) !important;
-}
-
-/* Spinner text */
-[data-testid="stSpinner"], [data-testid="stSpinner"] > div,
-[data-testid="stSpinner"] span, [data-testid="stSpinner"] p,
-.stSpinner, .stSpinner > div, .stSpinner span {
-    color: var(--text-primary) !important;
-}
-
-/* Progress bar label text */
-[data-testid="stProgress"] p,
-[data-testid="stProgress"] span,
-[data-testid="stProgress"] div,
-[data-testid="stProgressBar"] ~ div {
-    color: var(--text-primary) !important;
-}
-
-/* Alert boxes (st.error, st.warning, st.info, st.success) */
-[data-testid="stAlert"], [data-testid="stAlert"] p,
-[data-testid="stAlert"] span, [data-testid="stAlert"] div,
-[data-testid="stNotification"], [data-testid="stNotification"] p,
-[role="alert"], [role="alert"] p, [role="alert"] span,
-.stAlert, .stAlert p, .stAlert div {
-    color: var(--text-primary) !important;
-}
-
-/* Text input */
-[data-testid="stTextInput"] label,
-[data-testid="stTextInput"] input,
-[data-testid="stTextInput"] p,
-[data-testid="stTextInput"] span,
-.stTextInput label, .stTextInput input {
-    color: var(--text-primary) !important;
-}
-[data-testid="stTextInput"] input {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-}
-
-/* File uploader text fixes */
-[data-testid="stFileUploader"] * {
-    color: #FFFFFF !important;
-}
-
-/* Tabs text (belt-and-suspenders on top of existing rules) */
-[data-testid="stTabs"] span, [data-testid="stTabs"] p {
-    color: var(--text-primary) !important;
-}
-
-/* Toast / notifications */
-[data-testid="stToast"], [data-testid="stToast"] p,
-[data-testid="stToast"] span {
-    color: var(--text-primary) !important;
-}
-
-/* Status widget */
-[data-testid="stStatusWidget"] span,
-[data-testid="stStatusWidget"] div {
-    color: var(--text-primary) !important;
-}
-
-/* Expander content text */
-[data-testid="stExpander"] p,
-[data-testid="stExpander"] span,
-[data-testid="stExpander"] div,
-[data-testid="stExpander"] li {
-    color: var(--text-primary) !important;
-}
-
-/* Button text readability */
-[data-testid="stBaseButton-secondary"] span,
-[data-testid="stBaseButton-primary"] span {
-    color: inherit !important;
-}
-
-/* Metric widget (built-in st.metric) */
-[data-testid="stMetric"] label,
-[data-testid="stMetric"] div,
-[data-testid="stMetricValue"] {
-    color: var(--text-primary) !important;
-}
-
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding-top: 2rem !important; max-width: 1400px !important; }
-
-[data-testid="stFileUploader"] {
-    background: transparent !important;
-    border: 2px dashed var(--border) !important;
-    border-radius: var(--radius) !important;
-}
-
-[data-testid="stFileUploader"] {
-    background-color: #262730 !important;
-}
-
-[data-testid="stFileUploader"] * {
-    color: #FFFFFF !important;
-}
-
-[data-testid="stFileUploadDropzone"] {
-    background-color: #262730 !important;
-}
-
-[data-testid="stFileUploadDropzone"] * {
-    color: #FFFFFF !important;
-}
-
-[data-testid="stBaseButton-secondary"] button {
-    color: #FFFFFF !important;
-    border-color: #4A5568 !important;
-    background-color: #262730 !important;
-}
+/* ═══════════════════════════════════════════════════
+   TABLER ICON HELPERS
+   ═══════════════════════════════════════════════════ */
+.ti     { vertical-align: -0.125em; }
+.ti-lg  { font-size: 1.4rem; vertical-align: -0.2em; }
+.ti-hero { font-size: 2.4rem; vertical-align: -0.25em; margin-right: 10px; }
+.ti-step { font-size: 1rem; vertical-align: -0.12em; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -385,10 +516,10 @@ def load_inference_engine():
     return InferenceEngine()
 
 def risk_color(score: float) -> str:
-    if score >= 8: return "var(--destructive)"
+    if score >= 8: return "var(--danger)"
     if score >= 5: return "var(--warning)"
     if score >= 2: return "var(--accent)"
-    return "var(--text-muted)"
+    return "var(--ink-muted)"
 
 def risk_label(score: float) -> str:
     if score >= 8:  return "CRITICAL"
@@ -412,12 +543,12 @@ def render_gauge(score: float):
     st.markdown(f"""
     <div class="gauge-container">
         <div class="gauge-label"><i class="ti ti-shield-half-filled" style="margin-right:5px;"></i>Risk Score</div>
-        <div class="gauge-score" style="color:{color};">{score}<span style="font-size:1.5rem;color:var(--text-muted);opacity:0.6;">/10</span></div>
+        <div class="gauge-score" style="color:{color};">{score}<span class="gauge-score-denom">/10</span></div>
         <div style="font-size:0.8rem;font-weight:700;letter-spacing:2px;color:{color};margin-top:4px;">{label}</div>
         <div class="gauge-bar-bg">
             <div class="gauge-bar-fill" style="width:{pct}%;background-color:{color};"></div>
         </div>
-        <div class="gauge-range">0 -- Safe &nbsp;&nbsp;&nbsp; 10 -- Critical</div>
+        <div class="gauge-range">0 &mdash; Safe &nbsp;&nbsp;&nbsp; 10 &mdash; Critical</div>
     </div>""", unsafe_allow_html=True)
 
 
@@ -428,10 +559,10 @@ def render_finding(f: dict):
     line  = f.get('line', '?')
     icon  = severity_icon_html(sev)
     
-    hdr_color = "var(--text-primary)"
-    if sev == "HIGH": hdr_color = "var(--destructive)"
-    elif sev == "MEDIUM": hdr_color = "var(--warning)"
-    else: hdr_color = "var(--accent)"
+    hdr_color = {
+        "HIGH":   "var(--danger)",
+        "MEDIUM": "var(--warning)",
+    }.get(sev, "var(--accent)")
 
     st.markdown(f"""
     <div class="finding-card finding-{sev}">
@@ -449,9 +580,12 @@ def render_tags(items: list, kind: str = "source"):
     st.markdown(f'<div class="tag-container">{tags_html}</div>', unsafe_allow_html=True)
 
 
+# ═══════════════════════════════════════════════════
+# SIDEBAR
+# ═══════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("""
-    <div style="font-size:1.1rem;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+    <div style="font-size:1.1rem;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border);">
         <i class="ti ti-settings-2" style="color:var(--accent);font-size:1.2rem;"></i> Settings
     </div>
     
@@ -476,12 +610,12 @@ with st.sidebar:
     </div>
     
     <div class="sb-section-title">Scanner</div>
-    <div style="font-size:0.83rem;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+    <div style="font-size:0.83rem;color:var(--ink);display:flex;align-items:center;gap:6px;">
         <i class="ti ti-shield-check" style="color:var(--accent);"></i> Semgrep + AST/Regex Fallback
     </div>
     
     <div class="sb-section-title">Processing</div>
-    <div style="font-size:0.83rem;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+    <div style="font-size:0.83rem;color:var(--ink);display:flex;align-items:center;gap:6px;">
         <i class="ti ti-cpu" style="color:var(--accent);"></i> 4 Parallel Threads (Big Files)
     </div>
 
@@ -493,12 +627,15 @@ with st.sidebar:
     st.link_button("View Advanced Analytics (React Frontend)", "http://localhost:5173", use_container_width=True)
     
     st.markdown("""
-    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);font-size:0.7rem;color:var(--text-muted);text-align:center;">
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);font-size:0.7rem;color:var(--ink-muted);text-align:center;">
         <i class="ti ti-lock" style="margin-right:4px;"></i> AI Security Auditor v2.0
     </div>
     """, unsafe_allow_html=True)
 
 
+# ═══════════════════════════════════════════════════
+# HERO
+# ═══════════════════════════════════════════════════
 st.markdown("""
 <div class="hero-banner">
     <div class="hero-title">
@@ -510,6 +647,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ═══════════════════════════════════════════════════
+# TABS + INPUTS
+# ═══════════════════════════════════════════════════
 tab_file, tab_dir, tab_big = st.tabs(["Single File Audit", "Directory Bulk Scan", "Large File Audit"])
 uploaded_file = None
 dir_path_input = ""
@@ -524,16 +664,16 @@ with tab_file:
     )
 
 with tab_big:
-    st.markdown("""<div style='font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;'>
+    st.markdown("""<div style='font-size:0.85rem;color:var(--ink-muted);margin-bottom:12px;'>
         <i class='ti ti-info-circle'></i>&nbsp;
-        Files over <b style='color:var(--text-primary);'>200 lines</b> are split into chunks via AST-aware segmentation.
-        Each chunk is independently scanned and summarised, then a <b style='color:var(--text-primary);'>Meta-Transformer</b>
+        Files over <b style='color:var(--ink);'>200 lines</b> are split into chunks via AST-aware segmentation.
+        Each chunk is independently scanned and summarised, then a <b style='color:var(--ink);'>Meta-Transformer</b>
         pass produces a single whole-file narrative.
     </div>""", unsafe_allow_html=True)
     big_uploaded = st.file_uploader(
         "Browse and select a large source file",
         type=['py', 'java', 'c', 'js'],
-        help="Supported: .py .java .c .js -- files over 200 lines use chunked analysis",
+        help="Supported: .py .java .js .c -- files over 200 lines use chunked analysis",
         key="big_uploader"
     )
     if big_uploaded:
@@ -569,6 +709,9 @@ if not (uploaded_file or run_btn or demo_btn or run_big_btn or big_uploaded):
     st.stop()
 
 
+# ═══════════════════════════════════════════════════
+# DIRECTORY SCAN
+# ═══════════════════════════════════════════════════
 if run_btn or demo_btn:
     if run_btn and not os.path.isdir(dir_path_input):
         st.error("Directory not found or path empty! Please provide a valid absolute directory path.")
@@ -636,13 +779,13 @@ if run_btn or demo_btn:
             
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--text-primary)!important">{len(results_arr)}</div><div class="metric-label">Files Scanned</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value">{len(results_arr)}</div><div class="metric-label">Files Scanned</div></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--destructive)!important">{total_counts['HIGH']}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--danger);">{total_counts['HIGH']}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning)!important">{total_counts['MEDIUM']}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning);">{total_counts['MEDIUM']}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent)!important">{total_counts['LOW']}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent);">{total_counts['LOW']}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('''<div class="section-header">
@@ -663,7 +806,12 @@ if run_btn or demo_btn:
     for group, entries in sorted(groups.items()):
         with st.expander(f"{group.upper()} ({len(entries)} file{'s' if len(entries)>1 else ''})"):
             for e in entries:
-                st.markdown(f"**<span style='color:var(--text-primary);'>{e['fname']}</span>** &nbsp;--&nbsp; <span style='color:var(--text-muted);'>{e['summary']}</span> <span style='color:var(--text-primary);'>*(Score: {e['score']}/10)*</span>", unsafe_allow_html=True)
+                st.markdown(
+                    f"**{e['fname']}** &nbsp;&mdash;&nbsp; "
+                    f"<span style='color:var(--ink-muted);'>{e['summary']}</span> "
+                    f"<span style='color:var(--ink-muted);font-size:0.85rem;'>*(Score: {e['score']}/10)*</span>",
+                    unsafe_allow_html=True
+                )
     
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('''<div class="section-header">
@@ -676,8 +824,8 @@ if run_btn or demo_btn:
         st.markdown(f"""
         <div class="finding-card finding-{sev}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:600; font-size:0.9rem; color:var(--text-primary);">{rel_path}</span>
-                <span style="font-family:var(--font-mono); font-weight:800; font-size:1rem; color:var(--text-primary);">{r.get('risk_score',0)}/10</span>
+                <span style="font-weight:600; font-size:0.9rem; color:var(--ink);">{rel_path}</span>
+                <span style="font-family:var(--mono); font-weight:800; font-size:1rem; color:var(--ink);">{r.get('risk_score',0)}/10</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -687,6 +835,9 @@ if run_btn or demo_btn:
     st.stop()
 
 
+# ═══════════════════════════════════════════════════
+# LARGE FILE AUDIT
+# ═══════════════════════════════════════════════════
 if big_uploaded:
     LANG_MAP_BIG = {'.py': 'python', '.java': 'java', '.js': 'javascript', '.c': 'c'}
 
@@ -713,9 +864,9 @@ if big_uploaded:
         with right:
             st.markdown("""<div class="section-header"><i class="ti ti-binary-tree-2"></i> Large File Scan</div>""", unsafe_allow_html=True)
             st.markdown("""
-            <div style="text-align:center;padding:50px 20px;color:var(--text-muted);opacity:0.8;">
+            <div style="text-align:center;padding:50px 20px;color:var(--ink-muted);">
                 <i class="ti ti-bolt" style="font-size:3rem;display:block;margin-bottom:16px;color:var(--accent);"></i>
-                <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">Ready to audit</div>
+                <div style="font-size:1rem;font-weight:600;color:var(--ink);">Ready to audit</div>
                 <div style="font-size:0.85rem;margin-top:8px;">Scroll to the top of the Large File tab and click <b>Run Chunked Audit</b>.</div>
             </div>""", unsafe_allow_html=True)
         st.stop()
@@ -752,7 +903,7 @@ if big_uploaded:
         import threading
 
         inference_big = load_inference_engine()
-        _completed_count = [0]  # mutable counter for thread-safe progress
+        _completed_count = [0]
         _progress_lock = threading.Lock()
 
         with measure_energy(sample_interval_s=0.2) as col_big:
@@ -761,12 +912,15 @@ if big_uploaded:
                 chunks = chunk_file(big_file_path)
             col_big.begin_phase("Chunk Analysis (4 threads)")
 
-            status_ph.markdown(f"<small style='color:var(--text-muted);'>Processing <b style='color:var(--text-primary);'>{len(chunks)} chunks</b> across <b style='color:var(--text-primary);'>4 parallel threads</b>...</small>", unsafe_allow_html=True)
+            status_ph.markdown(
+                f"<small style='color:var(--ink-muted);'>Processing <b style='color:var(--ink);'>{len(chunks)} chunks</b> "
+                f"across <b style='color:var(--ink);'>4 parallel threads</b>...</small>",
+                unsafe_allow_html=True
+            )
 
             chunk_results = [None] * len(chunks)
 
             def _analyze_and_track(idx, cname, ctext, start_line):
-                """Thread worker: analyze one chunk."""
                 return idx, analyze_chunk(cname, ctext, lang_big, inference_big, start_line)
 
             with ThreadPoolExecutor(max_workers=4) as executor:
@@ -807,7 +961,6 @@ if big_uploaded:
         </div>''', unsafe_allow_html=True)
         st.markdown(f'<div class="summary-box">{meta_sum}</div>', unsafe_allow_html=True)
 
-        # ── CONSOLIDATED VULNERABILITIES (sorted by original file line) ──
         all_findings = []
         for cr in chunk_results:
             all_findings.extend(cr.get('findings', []))
@@ -817,11 +970,10 @@ if big_uploaded:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('''<div class="section-header">
             <i class="ti ti-alert-triangle"></i> Consolidated Vulnerabilities
-            <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted);margin-left:8px;">(original file line numbers, deduplicated)</span>
+            <span style="font-weight:400;font-size:0.78rem;color:var(--ink-muted);margin-left:8px;">(original file line numbers, deduplicated)</span>
         </div>''', unsafe_allow_html=True)
 
         if all_findings:
-            # Severity counts
             sev_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
             from src.vuln_classifier import normalize_severity
             for f in all_findings:
@@ -829,21 +981,24 @@ if big_uploaded:
                 sev_counts[norm_sev] = sev_counts.get(norm_sev, 0) + 1
             vc1, vc2, vc3, vc4 = st.columns(4)
             with vc1:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--text-primary)!important">{len(all_findings)}</div><div class="metric-label">Total</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><div class="metric-value">{len(all_findings)}</div><div class="metric-label">Total</div></div>""", unsafe_allow_html=True)
             with vc2:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--destructive)!important">{sev_counts.get('HIGH',0)}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--danger);">{sev_counts.get('HIGH',0)}</div><div class="metric-label">High Vulnerability</div></div>""", unsafe_allow_html=True)
             with vc3:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning)!important">{sev_counts.get('MEDIUM',0)}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--warning);">{sev_counts.get('MEDIUM',0)}</div><div class="metric-label">Medium Vulnerability</div></div>""", unsafe_allow_html=True)
             with vc4:
-                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent)!important">{sev_counts.get('LOW',0)}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><div class="metric-value" style="color:var(--accent);">{sev_counts.get('LOW',0)}</div><div class="metric-label">Low Vulnerability</div></div>""", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
             for fnd in all_findings:
                 chunk_src = fnd.get('original_chunk', '')
-                chunk_badge = f" <span style='font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono);'>chunk: {chunk_src}</span>" if chunk_src else ""
+                chunk_badge = (
+                    f" <span style='font-size:0.68rem;color:var(--ink-muted);font-family:var(--mono);'>chunk: {chunk_src}</span>"
+                    if chunk_src else ""
+                )
                 sev = normalize_severity(fnd.get('severity', 'INFO')).upper()
                 icon = severity_icon_html(sev)
-                hdr_color = "var(--destructive)" if sev == "HIGH" else "var(--warning)" if sev == "MEDIUM" else "var(--accent)"
+                hdr_color = {"HIGH": "var(--danger)", "MEDIUM": "var(--warning)"}.get(sev, "var(--accent)")
                 st.markdown(f"""
                 <div class="finding-card finding-{sev}">
                     <div class="finding-header" style="color:{hdr_color};">{icon} {sev} VULNERABILITY{chunk_badge}</div>
@@ -852,8 +1007,8 @@ if big_uploaded:
                 </div>""", unsafe_allow_html=True)
         else:
             st.markdown("""<div class="finding-card finding-LOW">
-                <div class="finding-header" style="color:var(--text-primary);">
-                    <i class="ti ti-circle-check" style="color:var(--accent);"></i> CLEAN
+                <div class="finding-header" style="color:var(--accent);">
+                    <i class="ti ti-circle-check"></i> CLEAN
                 </div>
                 <div class="finding-msg">No vulnerabilities detected across any chunks.</div>
             </div>""", unsafe_allow_html=True)
@@ -864,7 +1019,6 @@ if big_uploaded:
         </div>''', unsafe_allow_html=True)
 
         for cr in chunk_results:
-            sev_cls = "HIGH" if cr['risk_score'] >= 7 else "MEDIUM" if cr['risk_score'] >= 4 else "LOW"
             n_findings = len(cr.get('findings', []))
             with st.expander(f"{cr['name']}   |   Score: {cr['risk_score']}/10   |   {n_findings} finding(s)"):
                 st.markdown(f"<div class='summary-box' style='margin-bottom:12px;'>{cr['summary']}</div>", unsafe_allow_html=True)
@@ -872,15 +1026,15 @@ if big_uploaded:
                     for fnd in cr['findings']:
                         render_finding(fnd)
                 else:
-                    st.markdown("<small style='color:var(--text-muted);'>No findings in this chunk.</small>", unsafe_allow_html=True)
+                    st.markdown("<small style='color:var(--ink-muted);'>No findings in this chunk.</small>", unsafe_allow_html=True)
 
                 feats = cr.get('features', {})
                 fa2, fb2 = st.columns(2)
                 with fa2:
-                    st.markdown("<div style='font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;'><i class='ti ti-database-import'></i> Sources</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='font-size:0.78rem;font-weight:600;color:var(--ink-muted);margin-bottom:4px;'><i class='ti ti-database-import'></i> Sources</div>", unsafe_allow_html=True)
                     render_tags(feats.get('sources', []), 'source')
                 with fb2:
-                    st.markdown("<div style='font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;'><i class='ti ti-skull'></i> Sinks</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='font-size:0.78rem;font-weight:600;color:var(--ink-muted);margin-bottom:4px;'><i class='ti ti-skull'></i> Sinks</div>", unsafe_allow_html=True)
                     render_tags(feats.get('sinks', []), 'sink')
 
     except Exception as e:
@@ -899,6 +1053,9 @@ if big_uploaded:
     st.stop()
 
 
+# ═══════════════════════════════════════════════════
+# SINGLE FILE AUDIT
+# ═══════════════════════════════════════════════════
 elif uploaded_file:
     code_content = uploaded_file.getvalue().decode("utf-8", errors="ignore")
     ext      = os.path.splitext(uploaded_file.name)[1].lower()
@@ -917,7 +1074,7 @@ with left:
     fi1, fi2, fi3 = st.columns(3)
     with fi1:
         st.markdown(f"""<div class="metric-card">
-            <div class="metric-value" style="font-size:1.1rem;word-break:break-all;color:black;">{uploaded_file.name}</div>
+            <div class="metric-value" style="font-size:1.1rem;word-break:break-all;">{uploaded_file.name}</div>
             <div class="metric-label"><i class="ti ti-file"></i> File</div></div>""", unsafe_allow_html=True)
     with fi2:
         st.markdown(f"""<div class="metric-card">
@@ -1050,8 +1207,8 @@ with right:
                 render_finding(f)
         else:
             st.markdown("""<div class="finding-card finding-LOW">
-                <div class="finding-header" style="color:var(--text-primary);">
-                    <i class="ti ti-circle-check" style="color:var(--accent);"></i> CLEAN
+                <div class="finding-header" style="color:var(--accent);">
+                    <i class="ti ti-circle-check"></i> CLEAN
                 </div>
                 <div class="finding-msg">No vulnerabilities detected by static analysis.</div>
             </div>""", unsafe_allow_html=True)
@@ -1064,19 +1221,19 @@ with right:
         f  = results['features']
         fa, fb = st.columns(2)
         with fa:
-            st.markdown("<div style='font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;'><i class='ti ti-database-import'></i> Data Sources</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.8rem;font-weight:600;color:var(--ink-muted);margin-bottom:4px;'><i class='ti ti-database-import'></i> Data Sources</div>", unsafe_allow_html=True)
             render_tags(f.get('sources', []), "source")
         with fb:
-            st.markdown("<div style='font-size:0.8rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;'><i class='ti ti-skull'></i> Dangerous Sinks</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.8rem;font-weight:600;color:var(--ink-muted);margin-bottom:4px;'><i class='ti ti-skull'></i> Dangerous Sinks</div>", unsafe_allow_html=True)
             render_tags(f.get('sinks', []), "sink")
             
-        complexity  = f.get('complexity', 0)
+        complexity = f.get('complexity', 0)
         st.markdown(f"""
         <div class="metric-card" style="margin-top:12px;text-align:left;display:flex;align-items:center;gap:16px;">
-            <i class="ti ti-git-branch" style="font-size:1.8rem;color:var(--text-primary);flex-shrink:0;"></i>
+            <i class="ti ti-git-branch" style="font-size:1.8rem;color:var(--ink);flex-shrink:0;"></i>
             <div>
-                <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Cyclomatic Complexity</div>
-                <div style="font-size:1.8rem;font-weight:800;color:var(--text-primary);">{complexity}</div>
+                <div style="font-size:0.7rem;color:var(--ink-muted);text-transform:uppercase;letter-spacing:1px;">Cyclomatic Complexity</div>
+                <div style="font-size:1.8rem;font-weight:800;color:var(--ink);">{complexity}</div>
             </div>
         </div>""", unsafe_allow_html=True)
 
@@ -1085,8 +1242,8 @@ with right:
 
     else:
         st.markdown("""
-        <div style="text-align:center;padding:60px 20px;color:var(--text-muted);opacity:0.8;">
+        <div style="text-align:center;padding:60px 20px;color:var(--ink-muted);">
             <i class="ti ti-bolt" style="font-size:3rem;display:block;margin-bottom:16px;color:var(--accent);"></i>
-            <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">Ready to audit</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--ink);">Ready to audit</div>
             <div style="font-size:0.85rem;margin-top:8px;">Click the button above to run the full 5-stage analysis pipeline</div>
         </div>""", unsafe_allow_html=True)

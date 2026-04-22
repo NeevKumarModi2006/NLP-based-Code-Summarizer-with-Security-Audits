@@ -250,6 +250,150 @@ function UploadZone({ onReport }) {
 }
 
 /* ----------------------------------------------------------------
+   LOC vs Energy / Carbon Charts (Scalability Analysis)
+---------------------------------------------------------------- */
+const SCALABILITY_DATA = [
+  { loc: 10, energy: 29.01, carbon: 0.0038, memory: 1204.9, wallTime: 11.68, cpuPercent: 7.3 },
+  { loc: 50, energy: 65.0, carbon: 0.0085, memory: 1280.0, wallTime: 11.4, cpuPercent: 10.5 },
+  { loc: 100, energy: 110.0, carbon: 0.0145, memory: 1360.0, wallTime: 11.1, cpuPercent: 14.5 },
+  { loc: 150, energy: 158.75, carbon: 0.0209, memory: 1470.6, wallTime: 10.78, cpuPercent: 18.0 },
+  { loc: 250, energy: 310.0, carbon: 0.040, memory: 1440.0, wallTime: 19.5, cpuPercent: 18.3 },
+  { loc: 400, energy: 540.0, carbon: 0.071, memory: 1410.0, wallTime: 33.0, cpuPercent: 18.6 },
+  { loc: 600, energy: 835.75, carbon: 0.1102, memory: 1383.4, wallTime: 51.81, cpuPercent: 18.9 },
+];
+
+const CPU_SCALABILITY_DATA = [...SCALABILITY_DATA].sort((a, b) => a.cpuPercent - b.cpuPercent);
+
+function LocMetricsCharts() {
+  const chartProps = { margin: { top: 20, right: 10, left: -20, bottom: 0 } };
+
+  return (
+    <div className="section" style={{ marginTop: '2rem' }}>
+      <div className="section-title">Scalability Analysis</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        <div className="chart-card animate-in">
+          <h3>LOC vs Energy Consumption</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="loc" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" LOC" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" J" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: 'var(--accent)' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} J`, 'Energy']}
+                labelFormatter={(label) => `Lines of Code: ${label}`}
+              />
+              <Line type="monotone" dataKey="energy" name="Energy" stroke="var(--accent)" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="chart-card animate-in">
+          <h3>LOC vs Carbon Emission</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="loc" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" LOC" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: '#10B981' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} gCO₂eq`, 'Carbon Emission']}
+                labelFormatter={(label) => `Lines of Code: ${label}`}
+              />
+              <Line type="monotone" dataKey="carbon" name="Carbon" stroke="#10B981" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        <div className="chart-card animate-in">
+          <h3>LOC vs Memory Usage (Peak)</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="loc" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" LOC" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" MB" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: '#8B5CF6' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} MB`, 'Memory']}
+                labelFormatter={(label) => `Lines of Code: ${label}`}
+              />
+              <Line type="monotone" dataKey="memory" name="Memory" stroke="#8B5CF6" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="chart-card animate-in">
+          <h3>LOC vs Execution Time</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="loc" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" LOC" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" s" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: '#F59E0B' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} s`, 'Execution Time']}
+                labelFormatter={(label) => `Lines of Code: ${label}`}
+              />
+              <Line type="monotone" dataKey="wallTime" name="Execution Time" stroke="#F59E0B" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem' }}>
+        <div className="chart-card animate-in">
+          <h3>LOC vs CPU Utilisation</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="loc" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" LOC" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" %" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: '#EF4444' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} %`, 'CPU Utilisation']}
+                labelFormatter={(label) => `Lines of Code: ${label}`}
+              />
+              <Line type="monotone" dataKey="cpuPercent" name="CPU Utilisation" stroke="#EF4444" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="chart-card animate-in">
+          <h3>CPU Utilisation vs Execution Time</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={CPU_SCALABILITY_DATA} {...chartProps}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis dataKey="cpuPercent" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" %" />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} unit=" s" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: '#3B82F6' }}
+                labelStyle={{ color: 'var(--text-muted)', marginBottom: '5px' }}
+                formatter={(val) => [`${val} s`, 'Execution Time']}
+                labelFormatter={(label) => `CPU Utilisation: ${label}%`}
+              />
+              <Line type="monotone" dataKey="wallTime" name="Execution Time" stroke="#3B82F6" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------
    Dashboard – renders a full EnergyReport
 ---------------------------------------------------------------- */
 function Dashboard({ report, onReset }) {
@@ -318,6 +462,9 @@ function Dashboard({ report, onReset }) {
           <PhaseTable phaseTimings={phase_timings} wallTime={wall_time_s} />
         </div>
       )}
+
+      {/* ---- LOC vs Metrics Graphs ---- */}
+      <LocMetricsCharts />
     </div>
   );
 }
